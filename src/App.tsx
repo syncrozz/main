@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { TrustStrip } from './components/TrustStrip';
@@ -12,17 +13,53 @@ import { Footer } from './components/Footer';
 import { PlatformModal } from './components/PlatformModal';
 import { ContactModal } from './components/ContactModal';
 import { VideoDemoModal } from './components/VideoDemoModal';
+import { AdminOgModal } from './components/AdminOgModal';
+import { AdminLayout } from './components/admin/AdminLayout';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
+import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage } from './utils/ogStorage';
 
-export default function App() {
+function MainAppContent() {
+  const [isAdminView, setIsAdminView] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
+
+  // Check URL hash / path on load for /admin
+  useEffect(() => {
+    const checkRoute = () => {
+      const hash = window.location.hash;
+      const path = window.location.pathname;
+      if (hash === '#admin' || hash.startsWith('#/admin') || path.startsWith('/admin')) {
+        setIsAdminView(true);
+      } else {
+        setIsAdminView(false);
+      }
+    };
+
+    checkRoute();
+    window.addEventListener('hashchange', checkRoute);
+    window.addEventListener('popstate', checkRoute);
+
+    return () => {
+      window.removeEventListener('hashchange', checkRoute);
+      window.removeEventListener('popstate', checkRoute);
+    };
+  }, []);
+
+  // Load custom OG images on mount
+  useEffect(() => {
+    setCustomOgImages(getCustomOgImages());
+  }, []);
 
   // Handle active section on scroll
   useEffect(() => {
+    if (isAdminView) return;
+
     const handleScroll = () => {
       const sections = ['home', 'platform', 'flow', 'solutions', 'kos', 'about', 'contact'];
       const scrollPosition = window.scrollY + 200;
@@ -42,9 +79,31 @@ export default function App() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, [isAdminView]);
+
+  const navigateToAdmin = useCallback(() => {
+    window.location.hash = '#admin';
+    setIsAdminView(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const navigateToSite = useCallback(() => {
+    window.location.hash = '#home';
+    setIsAdminView(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const scrollToSection = (sectionId: string) => {
+    if (isAdminView) {
+      setIsAdminView(false);
+      window.location.hash = `#${sectionId}`;
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      return;
+    }
+
     const el = document.getElementById(sectionId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
@@ -58,6 +117,36 @@ export default function App() {
     }
   };
 
+  const handleSaveOgImage = (platformId: string, dataUrl: string) => {
+    saveCustomOgImage(platformId, dataUrl);
+    setCustomOgImages((prev) => ({
+      ...prev,
+      [platformId]: dataUrl
+    }));
+  };
+
+  const handleRemoveOgImage = (platformId: string) => {
+    removeCustomOgImage(platformId);
+    setCustomOgImages((prev) => {
+      const copy = { ...prev };
+      delete copy[platformId];
+      return copy;
+    });
+  };
+
+  // IF ADMIN VIEW: Render Protected Admin Route
+  if (isAdminView) {
+    return (
+      <AdminLayout
+        onExitToWebsite={navigateToSite}
+        customOgImages={customOgImages}
+        onSaveOgImage={handleSaveOgImage}
+        onRemoveOgImage={handleRemoveOgImage}
+      />
+    );
+  }
+
+  // PUBLIC WEBSITE VIEW
   return (
     <div className="min-h-screen bg-[#fcfdfe] text-slate-900 font-sans flex flex-col selection:bg-blue-600 selection:text-white">
       
@@ -66,6 +155,9 @@ export default function App() {
         onExploreClick={() => scrollToSection('platform')}
         onContactClick={() => setIsContactOpen(true)}
         activeSection={activeSection}
+        isAdminMode={isAdminMode}
+        onOpenAdminModal={() => setIsAdminModalOpen(true)}
+        onAdminClick={navigateToAdmin}
       />
 
       {/* Main Content Area */}
@@ -82,6 +174,13 @@ export default function App() {
         {/* 3. Platform Section ("Satu Platform, Banyak Penyelesaian") */}
         <PlatformSection
           onSelectPlatform={(platform) => setSelectedPlatform(platform)}
+          customOgImages={customOgImages}
+          onSaveOgImage={handleSaveOgImage}
+          onRemoveOgImage={handleRemoveOgImage}
+          isAdminMode={isAdminMode}
+          onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
+          onOpenAdminModal={() => setIsAdminModalOpen(true)}
+          onAdminClick={navigateToAdmin}
         />
 
         {/* 4. Ecosystem Visual ("Flow") */}
@@ -113,6 +212,7 @@ export default function App() {
       <Footer
         onPlatformClick={handleSelectPlatformById}
         onContactClick={() => setIsContactOpen(true)}
+        onAdminClick={navigateToAdmin}
       />
 
       {/* Modals */}
@@ -120,6 +220,9 @@ export default function App() {
         platform={selectedPlatform}
         onClose={() => setSelectedPlatform(null)}
         onContactClick={() => setIsContactOpen(true)}
+        customOgImages={customOgImages}
+        onSaveOgImage={handleSaveOgImage}
+        isAdminMode={isAdminMode}
       />
 
       <ContactModal
@@ -133,6 +236,25 @@ export default function App() {
         onExploreClick={() => scrollToSection('platform')}
       />
 
+      {/* Admin Mode Modal for Open Graph Image Uploads */}
+      <AdminOgModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        customOgImages={customOgImages}
+        onSaveOgImage={handleSaveOgImage}
+        onRemoveOgImage={handleRemoveOgImage}
+        isAdminMode={isAdminMode}
+        onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
+      />
+
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainAppContent />
+    </AuthProvider>
   );
 }

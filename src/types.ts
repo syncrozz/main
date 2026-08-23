@@ -16,6 +16,9 @@ export interface PlatformItem {
   url?: string;
   isPopular?: boolean;
   status: 'Active' | 'Beta' | 'New';
+  ogImage?: string;
+  ogTitle?: string;
+  ogDescription?: string;
 }
 
 export interface BenefitItem {

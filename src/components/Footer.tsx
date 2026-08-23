@@ -8,9 +8,10 @@ import {
 interface FooterProps {
   onPlatformClick: (id: string) => void;
   onContactClick: () => void;
+  onAdminClick?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onPlatformClick, onContactClick }) => {
+export const Footer: React.FC<FooterProps> = ({ onPlatformClick, onContactClick, onAdminClick }) => {
   return (
     <footer className="bg-white border-t border-slate-100 pt-16 pb-12 text-left">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
@@ -254,6 +255,17 @@ export const Footer: React.FC<FooterProps> = ({ onPlatformClick, onContactClick 
                   Terma Penggunaan
                 </a>
               </li>
+              {onAdminClick && (
+                <li>
+                  <button
+                    id="footer-admin-link"
+                    onClick={onAdminClick}
+                    className="text-[#0056D2] hover:underline font-semibold cursor-pointer text-left"
+                  >
+                    Admin Access (Google OAuth)
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

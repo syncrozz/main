@@ -5,19 +5,26 @@ import {
   ChevronRight, 
   Sparkles,
   ExternalLink,
-  Layers
+  Layers,
+  Settings
 } from 'lucide-react';
 
 interface NavbarProps {
   onExploreClick: () => void;
   onContactClick: () => void;
   activeSection: string;
+  isAdminMode?: boolean;
+  onOpenAdminModal?: () => void;
+  onAdminClick?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   onExploreClick, 
   onContactClick,
-  activeSection 
+  activeSection,
+  isAdminMode = false,
+  onOpenAdminModal,
+  onAdminClick
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -114,6 +121,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
+            {/* Admin Panel Button */}
+            {onAdminClick && (
+              <button
+                id="header-admin-portal-btn"
+                onClick={onAdminClick}
+                title="Akses Pentadbir (Google OAuth 2.0 Master Admin)"
+                className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-[#0056D2] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                aria-label="Akses Admin"
+              >
+                <Settings className="w-3.5 h-3.5 text-[#0056D2]" />
+                <span>Admin Access</span>
+              </button>
+            )}
+
             <button
               id="header-explore-btn"
               onClick={onExploreClick}
@@ -125,6 +146,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
+            {onAdminClick && (
+              <button
+                id="mobile-admin-gear-btn"
+                onClick={onAdminClick}
+                className="p-1.5 rounded-full border bg-slate-50 border-slate-200 text-slate-700 hover:text-[#0056D2] cursor-pointer"
+                aria-label="Admin Access"
+                title="Akses Admin"
+              >
+                <Settings className="w-4 h-4 text-[#0056D2]" />
+              </button>
+            )}
+
             <button
               id="mobile-explore-btn"
               onClick={onExploreClick}
@@ -169,6 +202,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col gap-2">
+            {onAdminClick && (
+              <button
+                id="mobile-drawer-admin-btn"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onAdminClick();
+                }}
+                className="w-full py-2.5 px-4 rounded-full text-center font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center gap-2 cursor-pointer text-sm"
+              >
+                <Settings className="w-4 h-4 text-[#0056D2]" />
+                <span>Admin Access (Google OAuth 2.0)</span>
+              </button>
+            )}
+
             <button
               id="mobile-drawer-explore-btn"
               onClick={() => {

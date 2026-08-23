@@ -13,21 +13,37 @@ import {
   Clock,
   Compass,
   Link2,
-  Check
+  Check,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { PlatformItem } from '../types';
+import { generateDefaultOgImage } from '../utils/ogStorage';
 
 interface PlatformModalProps {
   platform: PlatformItem | null;
   onClose: () => void;
   onContactClick: () => void;
+  customOgImages?: Record<string, string>;
+  onSaveOgImage?: (platformId: string, dataUrl: string) => void;
+  isAdminMode?: boolean;
 }
 
-export const PlatformModal: React.FC<PlatformModalProps> = ({ platform, onClose, onContactClick }) => {
+export const PlatformModal: React.FC<PlatformModalProps> = ({ 
+  platform, 
+  onClose, 
+  onContactClick,
+  customOgImages = {},
+  onSaveOgImage,
+  isAdminMode = false
+}) => {
   const [copied, setCopied] = useState(false);
   const [demoState, setDemoState] = useState<'idle' | 'simulating' | 'success'>('idle');
 
   if (!platform) return null;
+
+  const customImage = customOgImages[platform.id];
+  const ogImageUrl = customImage || generateDefaultOgImage(platform);
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText?.(window.location.origin + '#' + platform.id);
@@ -42,6 +58,20 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({ platform, onClose,
     }, 900);
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && onSaveOgImage) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        if (dataUrl) {
+          onSaveOgImage(platform.id, dataUrl);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       
@@ -51,56 +81,70 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({ platform, onClose,
         onClick={(e) => e.stopPropagation()}
       >
         
-        {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 px-6 sm:px-8 pt-8 pb-6 border-b border-slate-200/80 relative">
-          
+        {/* Open Graph Image Header Preview Banner */}
+        <div className="relative aspect-[16/7] w-full bg-slate-900 overflow-hidden">
+          <img
+            src={ogImageUrl}
+            alt={`Open Graph ${platform.name}`}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40"></div>
+
           {/* Close Button */}
           <button
             id="close-platform-modal-btn"
             onClick={onClose}
-            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-500 hover:text-slate-900 flex items-center justify-center shadow-xs border border-slate-200/60 transition-all cursor-pointer"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center shadow-xs border border-white/20 transition-all cursor-pointer z-10"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            
-            {/* Logo Badge */}
-            <div className="w-14 h-14 rounded-2xl bg-[#0056D2] text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
-              {platform.name.charAt(0)}
-            </div>
+          {/* Open Graph Tag & Upload Button */}
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/20 flex items-center gap-1.5">
+              <ImageIcon className="w-3 h-3 text-sky-400" />
+              <span>Open Graph Image (1200 × 630 JPG)</span>
+            </span>
 
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${platform.badgeColor}`}>
-                  {platform.category}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Status: {platform.status}
-                </span>
-              </div>
-
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans flex items-center gap-2">
-                <span>{platform.name}</span>
-                {platform.subName && (
-                  <span className="text-[#0056D2]">{platform.subName}</span>
-                )}
-              </h3>
-              
-              <p className="text-xs sm:text-sm font-medium text-slate-500">
-                {platform.tagline}
-              </p>
-            </div>
-
+            {onSaveOgImage && (
+              <label className="px-2.5 py-1 rounded-lg bg-[#0056D2] hover:bg-blue-700 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs">
+                <Upload className="w-3 h-3" />
+                <span>Upload JPG</span>
+                <input
+                  type="file"
+                  accept="image/jpeg, image/jpg, image/png"
+                  className="hidden"
+                  onChange={handleImageFileChange}
+                />
+              </label>
+            )}
           </div>
 
+          {/* Title on Banner */}
+          <div className="absolute bottom-4 left-6 right-6">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white text-slate-800 shadow-xs`}>
+                {platform.category}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500 text-white">
+                {platform.status}
+              </span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              <span>{platform.name}</span>
+              {platform.subName && (
+                <span className="text-sky-300">{platform.subName}</span>
+              )}
+            </h3>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 sm:p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 sm:p-8 space-y-6 max-h-[60vh] overflow-y-auto">
           
-          {/* Description */}
+          {/* Tagline & Description */}
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               Mengenai Platform
