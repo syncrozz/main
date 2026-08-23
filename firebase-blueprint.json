@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firestore-blueprint.json",
+  "entities": {
+    "admins": {
+      "title": "Admins",
+      "description": "Authorized admin users with roles and permissions",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["MASTER_ADMIN", "ADMIN"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "addedBy": { "type": "string" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "description": "System activity, security and admin audit logs",
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["SUCCESS", "DENIED", "INFO", "WARNING"] },
+        "details": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "ip": { "type": "string" }
+      },
+      "required": ["eventType", "userEmail", "status", "timestamp"]
+    },
+    "platformOgImages": {
+      "title": "Platform OG Images",
+      "description": "Custom Open Graph preview images for platforms",
+      "type": "object",
+      "properties": {
+        "platformId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["platformId", "imageUrl", "updatedAt"]
+    }
+  }
+}

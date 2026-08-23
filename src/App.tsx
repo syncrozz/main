@@ -14,22 +14,29 @@ import { PlatformModal } from './components/PlatformModal';
 import { ContactModal } from './components/ContactModal';
 import { VideoDemoModal } from './components/VideoDemoModal';
 import { AdminOgModal } from './components/AdminOgModal';
+import { SupportModal } from './components/SupportModal';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
 import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage } from './utils/ogStorage';
+import { 
+  saveOgImageToFirestore, 
+  removeOgImageFromFirestore, 
+  subscribeToOgImages 
+} from './services/firestoreService';
 
 function MainAppContent() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
 
-  // Check URL hash / path on load for /admin
+  // Check URL hash / path on load for /admin or /#support
   useEffect(() => {
     const checkRoute = () => {
       const hash = window.location.hash;
@@ -38,6 +45,10 @@ function MainAppContent() {
         setIsAdminView(true);
       } else {
         setIsAdminView(false);
+      }
+
+      if (hash === '#support' || hash.startsWith('#/support')) {
+        setIsSupportOpen(true);
       }
     };
 
@@ -51,9 +62,23 @@ function MainAppContent() {
     };
   }, []);
 
-  // Load custom OG images on mount
+  // Load custom OG images on mount and subscribe to Firestore
   useEffect(() => {
-    setCustomOgImages(getCustomOgImages());
+    // 1. Initial load from localStorage
+    const local = getCustomOgImages();
+    setCustomOgImages(local);
+
+    // 2. Real-time sync from Firestore
+    const unsubscribe = subscribeToOgImages((firestoreImages) => {
+      if (firestoreImages && Object.keys(firestoreImages).length > 0) {
+        setCustomOgImages((prev) => ({
+          ...prev,
+          ...firestoreImages
+        }));
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Handle active section on scroll
@@ -119,6 +144,7 @@ function MainAppContent() {
 
   const handleSaveOgImage = (platformId: string, dataUrl: string) => {
     saveCustomOgImage(platformId, dataUrl);
+    saveOgImageToFirestore(platformId, dataUrl).catch(() => {});
     setCustomOgImages((prev) => ({
       ...prev,
       [platformId]: dataUrl
@@ -127,6 +153,7 @@ function MainAppContent() {
 
   const handleRemoveOgImage = (platformId: string) => {
     removeCustomOgImage(platformId);
+    removeOgImageFromFirestore(platformId).catch(() => {});
     setCustomOgImages((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
@@ -213,6 +240,7 @@ function MainAppContent() {
         onPlatformClick={handleSelectPlatformById}
         onContactClick={() => setIsContactOpen(true)}
         onAdminClick={navigateToAdmin}
+        onSupportClick={() => setIsSupportOpen(true)}
       />
 
       {/* Modals */}
@@ -228,6 +256,16 @@ function MainAppContent() {
       <ContactModal
         isOpen={isContactOpen}
         onClose={() => setIsContactOpen(false)}
+      />
+
+      <SupportModal
+        isOpen={isSupportOpen}
+        onClose={() => {
+          setIsSupportOpen(false);
+          if (window.location.hash === '#support' || window.location.hash.startsWith('#/support')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }}
       />
 
       <VideoDemoModal

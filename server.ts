@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 
+const MASTER_ADMIN_EMAILS = ['khaikerr@gmail.com', 'cikgukyee@gmail.com'];
 const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
 
 const app = express();
@@ -38,7 +39,7 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
       return res.status(403).json({ error: 'Forbidden: Tiada identiti emel disahkan.' });
     }
 
-    const isMaster = email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+    const isMaster = MASTER_ADMIN_EMAILS.some(m => m.toLowerCase() === email.toLowerCase());
     const isSecondary = secondaryAdminsList.some(a => a.toLowerCase() === email.toLowerCase());
 
     if (!isMaster && !isSecondary) {
@@ -76,7 +77,7 @@ app.post('/api/auth/google', (req, res) => {
   const normalizedEmail = email.trim().toLowerCase();
   let role = 'USER';
 
-  if (normalizedEmail === MASTER_ADMIN_EMAIL.toLowerCase()) {
+  if (MASTER_ADMIN_EMAILS.some(m => m.toLowerCase() === normalizedEmail)) {
     role = 'MASTER_ADMIN';
   } else if (secondaryAdminsList.some(a => a.toLowerCase() === normalizedEmail)) {
     role = 'ADMIN';
@@ -143,7 +144,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.post('/api/admin/users', requireAdmin, (req, res) => {
   const { newAdminEmail, requesterEmail } = req.body;
 
-  if (requesterEmail?.toLowerCase() !== MASTER_ADMIN_EMAIL.toLowerCase()) {
+  if (!requesterEmail || !MASTER_ADMIN_EMAILS.some(m => m.toLowerCase() === requesterEmail.toLowerCase())) {
     return res.status(403).json({ error: 'Hanya Master Admin dibenarkan melantik pentadbir baharu.' });
   }
 

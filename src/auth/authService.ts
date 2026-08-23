@@ -1,5 +1,6 @@
 import { AuthUser, UserRole, Permission, AuditLogEntry } from './types';
 import { MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
+import { logAuditEventToFirestore } from '../services/firestoreService';
 
 const SESSION_KEY = 'syncrozz_auth_session';
 const ADMIN_REGISTRY_KEY = 'syncrozz_admin_registry';
@@ -126,6 +127,9 @@ export function logAuditEvent(action: string, email: string, status: 'SUCCESS' |
     const existingLogs = getAuditLogs();
     const updatedLogs = [entry, ...existingLogs].slice(0, 100); // keep last 100 logs
     localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(updatedLogs));
+
+    // Sync with Firestore in real-time
+    logAuditEventToFirestore(action, email, status, details || '').catch(() => {});
 
     // Also send to backend if available
     fetch('/api/admin/logs', {

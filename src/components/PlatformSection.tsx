@@ -24,6 +24,7 @@ import {
 import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem, PlatformCategory } from '../types';
 import { generateDefaultOgImage } from '../utils/ogStorage';
+import { useAuth } from '../auth/AuthContext';
 
 interface PlatformSectionProps {
   onSelectPlatform: (platform: PlatformItem) => void;
@@ -46,6 +47,9 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
   onOpenAdminModal,
   onAdminClick
 }) => {
+  const { isAuthenticated, isAdmin, isMasterAdmin } = useAuth();
+  const hasAdminAccess = isAdminMode || (isAuthenticated && (isAdmin || isMasterAdmin));
+
   const [selectedCategory, setSelectedCategory] = useState<PlatformCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
@@ -410,27 +414,29 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
                         )}
                       </div>
 
-                      {/* Quick Gear / Admin Trigger on Card */}
-                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
-                        <label 
-                          title="Muat naik fail Open Graph Image (JPG)"
-                          className="px-2 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white hover:bg-[#0056D2] transition-colors text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-white/20"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Upload className="w-3 h-3" />
-                          <span>JPG</span>
-                          <input
-                            type="file"
-                            accept="image/jpeg, image/jpg, image/png"
-                            className="hidden"
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                handleCardImageUpload(item.id, e.target.files[0]);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
+                      {/* Quick Gear / Admin Trigger on Card - Only visible when Admin Mode or Google OAuth Admin is active */}
+                      {hasAdminAccess && (
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
+                          <label 
+                            title="Muat naik fail Open Graph Image (JPG)"
+                            className="px-2 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white hover:bg-[#0056D2] transition-colors text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-white/20 shadow-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Upload className="w-3 h-3" />
+                            <span>JPG</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg, image/jpg, image/png"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleCardImageUpload(item.id, e.target.files[0]);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
 
                       {/* Success Feedback Notification */}
                       {isUploadSuccess && (

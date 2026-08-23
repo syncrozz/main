@@ -9,9 +9,15 @@ interface FooterProps {
   onPlatformClick: (id: string) => void;
   onContactClick: () => void;
   onAdminClick?: () => void;
+  onSupportClick?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onPlatformClick, onContactClick, onAdminClick }) => {
+export const Footer: React.FC<FooterProps> = ({ 
+  onPlatformClick, 
+  onContactClick, 
+  onAdminClick,
+  onSupportClick 
+}) => {
   return (
     <footer className="bg-white border-t border-slate-100 pt-16 pb-12 text-left">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
@@ -274,10 +280,38 @@ export const Footer: React.FC<FooterProps> = ({ onPlatformClick, onContactClick,
         {/* Bottom Copyright & Accreditation */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>© {new Date().getFullYear()} SYNCROZZ. Hak Cipta Terpelihara.</p>
-          <div className="flex items-center gap-1 text-slate-500 font-medium">
-            <span>Made with</span>
-            <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 inline" />
-            <span>for Education & Digital Innovation</span>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-slate-500 font-medium">
+            <a
+              href="https://syncrozz.com/#support"
+              id="footer-support-link"
+              onClick={(e) => {
+                if (onSupportClick) {
+                  e.preventDefault();
+                  onSupportClick();
+                }
+              }}
+              className="text-slate-600 hover:text-[#0056D2] transition-colors inline-flex items-center gap-1.5 cursor-pointer font-medium hover:underline"
+              title="Sokong SYNCROZZ"
+            >
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
+              <span>Sokong SYNCROZZ</span>
+            </a>
+
+            <span className="hidden sm:inline text-slate-300">|</span>
+
+            <span className="text-slate-500">
+              Develop By{' '}
+              <a
+                href="https://wa.me/60145313756"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-600 hover:text-[#0056D2] hover:underline transition-colors font-medium cursor-pointer"
+                title="Hubungi Syncrozz di WhatsApp"
+              >
+                Syncrozz
+              </a>
+            </span>
           </div>
         </div>
 

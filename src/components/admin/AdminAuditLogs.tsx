@@ -12,6 +12,7 @@ import {
 import { getAuditLogs, logAuditEvent } from '../../auth/authService';
 import { AuditLogEntry } from '../../auth/types';
 import { useAuth } from '../../auth/AuthContext';
+import { subscribeToAuditLogs } from '../../services/firestoreService';
 
 export const AdminAuditLogs: React.FC = () => {
   const { isMasterAdmin } = useAuth();
@@ -23,6 +24,26 @@ export const AdminAuditLogs: React.FC = () => {
 
   useEffect(() => {
     refreshLogs();
+
+    // Subscribe to Firestore audit logs in real-time
+    const unsubscribe = subscribeToAuditLogs((remoteLogs) => {
+      if (remoteLogs && remoteLogs.length > 0) {
+        setLogs((prev) => {
+          const combined = [...remoteLogs, ...prev];
+          const unique = Array.from(new Map(combined.map(item => [item.timestamp + (item.email || item.userEmail), item])).values());
+          return unique.sort((a, b) => b.timestamp - a.timestamp).map(item => ({
+            id: item.id || String(item.timestamp),
+            timestamp: item.timestamp,
+            email: item.email || item.userEmail || 'System',
+            action: item.action || item.eventType || 'EVENT',
+            status: item.status || 'INFO',
+            details: item.details
+          }));
+        });
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleClearLogs = () => {

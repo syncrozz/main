@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { PlatformItem } from '../types';
 import { generateDefaultOgImage } from '../utils/ogStorage';
+import { useAuth } from '../auth/AuthContext';
 
 interface PlatformModalProps {
   platform: PlatformItem | null;
@@ -37,6 +38,9 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
   onSaveOgImage,
   isAdminMode = false
 }) => {
+  const { isAuthenticated, isAdmin, isMasterAdmin } = useAuth();
+  const hasAdminAccess = isAdminMode || (isAuthenticated && (isAdmin || isMasterAdmin));
+
   const [copied, setCopied] = useState(false);
   const [demoState, setDemoState] = useState<'idle' | 'simulating' | 'success'>('idle');
 
@@ -108,7 +112,7 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
               <span>Open Graph Image (1200 × 630 JPG)</span>
             </span>
 
-            {onSaveOgImage && (
+            {onSaveOgImage && hasAdminAccess && (
               <label className="px-2.5 py-1 rounded-lg bg-[#0056D2] hover:bg-blue-700 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs">
                 <Upload className="w-3 h-3" />
                 <span>Upload JPG</span>

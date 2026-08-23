@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is signed in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Public read-only access for platform OG images so all visitors see the cards
+    match /platformOgImages/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Audit logs collection
+    match /auditLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if true; // allow logging events
+      allow update, delete: if isAuthenticated();
+    }
+  }
+}

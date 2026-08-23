@@ -12,7 +12,8 @@ export const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
  * Checked against verified Google OAuth emails.
  */
 export const MASTER_ADMIN_EMAILS: readonly string[] = [
-  'khaikerr@gmail.com'
+  'khaikerr@gmail.com',
+  'cikgukyee@gmail.com'
 ];
 
 /**
