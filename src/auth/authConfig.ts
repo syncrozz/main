@@ -8,12 +8,11 @@ import { UserRole, Permission, RolePermissions } from './types';
 export const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
 
 /**
- * List of initial Master Admin emails.
+ * List of authorized Master Admin emails.
  * Checked against verified Google OAuth emails.
  */
 export const MASTER_ADMIN_EMAILS: readonly string[] = [
-  'khaikerr@gmail.com',
-  'cikgukyee@gmail.com'
+  'khaikerr@gmail.com'
 ];
 
 /**

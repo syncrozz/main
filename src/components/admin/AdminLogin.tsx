@@ -194,7 +194,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
             </button>
           </div>
 
-          {/* Master Admin Buttons */}
+          {/* Master Admin Button */}
           <button
             id="test-master-admin-btn"
             onClick={() => handleSimulateAdminLogin(MASTER_ADMIN_EMAIL, 'Khaikerr (Master Admin)')}
@@ -206,24 +206,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
               <div>
                 <div className="text-xs font-bold text-slate-800">khaikerr@gmail.com</div>
                 <div className="text-[10px] text-blue-700 font-medium">Akaun Master Admin (Akses Dibenarkan)</div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-600 text-white rounded-full">
-              MASTER
-            </span>
-          </button>
-
-          <button
-            id="test-cikgu-admin-btn"
-            onClick={() => handleSimulateAdminLogin('cikgukyee@gmail.com', 'Cikgu Kyee (Master Admin)')}
-            disabled={isLoading || isAuthenticating}
-            className="w-full text-left py-2 px-3 rounded-lg bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition-colors flex items-center justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-[#0056D2] shrink-0" />
-              <div>
-                <div className="text-xs font-bold text-slate-800">cikgukyee@gmail.com</div>
-                <div className="text-[10px] text-blue-700 font-medium">Akaun Admin Pengimport (Akses Dibenarkan)</div>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-600 text-white rounded-full">

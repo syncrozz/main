@@ -16,6 +16,7 @@ import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 interface AuthContextType extends AuthState {
+  isInitialized: boolean;
   loginWithGoogleCredential: (credential: string) => Promise<boolean>;
   loginWithGoogleEmail: (email: string, displayName?: string, pictureUrl?: string) => Promise<boolean>;
   loginWithRealGooglePopup: () => Promise<boolean>;
@@ -32,22 +33,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
     const savedUser = getSavedSession();
-    if (savedUser) {
-      // Verify saved user still has admin role
-      const role = determineUserRole(savedUser.email, true);
-      if (role === 'MASTER_ADMIN' || role === 'ADMIN') {
-        setUser({ ...savedUser, role });
+    if (savedUser && savedUser.email) {
+      // Strict check: only khaikerr@gmail.com or authorized admin
+      const cleanEmail = savedUser.email.trim().toLowerCase();
+      const role = determineUserRole(cleanEmail, true);
+      if (cleanEmail === 'khaikerr@gmail.com' || role === 'MASTER_ADMIN' || role === 'ADMIN') {
+        setUser({ ...savedUser, email: cleanEmail, role });
       } else {
         clearSession();
         setUser(null);
       }
     }
     setIsLoading(false);
+    setIsInitialized(true);
   }, []);
 
   const clearAuthError = useCallback(() => {
@@ -55,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Process authenticated Google user
+   * Process authenticated Google user with strict khaikerr@gmail.com check
    */
   const processGoogleLogin = useCallback(async (
     email: string, 
@@ -68,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
+      const isStrictMasterAdmin = normalizedEmail === 'khaikerr@gmail.com';
       const role: UserRole = determineUserRole(normalizedEmail, true);
 
       const authenticatedUser: AuthUser = {
@@ -75,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: normalizedEmail,
         name: name || normalizedEmail.split('@')[0],
         picture: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || normalizedEmail)}&background=0056D2&color=fff&bold=true`,
-        role,
+        role: isStrictMasterAdmin ? 'MASTER_ADMIN' : role,
         isEmailVerified: true,
         provider: 'google',
         authTime: Date.now(),
@@ -85,15 +90,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set user in state
       setUser(authenticatedUser);
 
-      // Authorization Check
-      if (role === 'MASTER_ADMIN' || role === 'ADMIN') {
+      // Strict Authorization Check: Only khaikerr@gmail.com or authorized admin
+      if (isStrictMasterAdmin || role === 'MASTER_ADMIN' || role === 'ADMIN') {
         saveSession(authenticatedUser);
-        logAuditEvent('LOGIN_SUCCESS', normalizedEmail, 'SUCCESS', `Logged in as ${role}`);
+        logAuditEvent('LOGIN_SUCCESS', normalizedEmail, 'SUCCESS', `Logged in as ${authenticatedUser.role}`);
         return true;
       } else {
         clearSession();
+        setUser(null);
         logAuditEvent('LOGIN_DENIED', normalizedEmail, 'DENIED', `Akses ditolak untuk emel ${normalizedEmail} (Peranan: USER)`);
-        setError(`Akses Ditolak: Akaun Google (${normalizedEmail}) tidak tersenarai sebagai Pentadbir SYNCROZZ. Hanya akaun yang diberi kebenaran (seperti khaikerr@gmail.com) dibenarkan masuk.`);
+        setError(`Akses Ditolak: Akaun Google (${normalizedEmail}) tidak dibenarkan masuk. Hanya akaun Master Admin (khaikerr@gmail.com) dibenarkan.`);
         return false;
       }
     } catch (err: any) {
@@ -107,13 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Login using Real Firebase Google Popup or graceful Master Admin OAuth
+   * Login using Real Firebase Google Popup
    */
   const loginWithRealGooglePopup = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     try {
-      // Attempt Firebase Google Auth Popup
       const result = await signInWithPopup(auth, googleProvider);
       const email = result.user.email;
       if (!email) {
@@ -126,18 +131,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return await processGoogleLogin(email, displayName, photoURL, token);
     } catch (err: any) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-        setError('Log masuk Google telah dibatalkan.');
-        return false;
+        setError('Log masuk Google telah dibatalkan oleh pengguna.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setError('Tetingkap log masuk Google disekat oleh pelayar (popup blocked). Sila benarkan tetingkap timbul.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setError('Domain preview ini belum didaftarkan di Firebase Console. Sila log masuk dengan memasukkan emel Google anda.');
+      } else {
+        setError(err?.message || 'Gagal log masuk dengan akaun Google.');
       }
-
-      // For preview sandbox where Cloud Run domain is not yet whitelisted in Firebase Auth,
-      // seamlessly authenticate as Master Admin (khaikerr@gmail.com)
-      return await processGoogleLogin(
-        MASTER_ADMIN_EMAIL,
-        'Khaikerr (Master Admin)',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        'google-oauth2-verified-token'
-      );
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -251,9 +253,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     user,
     isLoading,
+    isInitialized,
     isAuthenticated: !!user,
-    isMasterAdmin: user?.role === 'MASTER_ADMIN',
-    isAdmin: user?.role === 'MASTER_ADMIN' || user?.role === 'ADMIN',
+    isMasterAdmin: user?.role === 'MASTER_ADMIN' && user?.email?.trim().toLowerCase() === 'khaikerr@gmail.com',
+    isAdmin: (user?.role === 'MASTER_ADMIN' || user?.role === 'ADMIN') && (user?.email?.trim().toLowerCase() === 'khaikerr@gmail.com' || (getCustomAdminList().includes(user?.email?.trim().toLowerCase() || ''))),
     error,
     loginWithGoogleCredential,
     loginWithGoogleEmail,

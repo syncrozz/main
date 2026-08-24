@@ -26,6 +26,7 @@ import {
 } from './services/firestoreService';
 
 function MainAppContent() {
+  const { user, isInitialized, isLoading } = useAuth();
   const [isAdminView, setIsAdminView] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -36,11 +37,14 @@ function MainAppContent() {
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
 
-  // Check URL hash / path on load for /admin or /#support
+  // Verify route after authentication state is fully initialized
   useEffect(() => {
+    if (!isInitialized || isLoading) return;
+
     const checkRoute = () => {
       const hash = window.location.hash;
       const path = window.location.pathname;
+
       if (hash === '#admin' || hash.startsWith('#/admin') || path.startsWith('/admin')) {
         setIsAdminView(true);
       } else {
@@ -60,7 +64,7 @@ function MainAppContent() {
       window.removeEventListener('hashchange', checkRoute);
       window.removeEventListener('popstate', checkRoute);
     };
-  }, []);
+  }, [isInitialized, isLoading]);
 
   // Load custom OG images on mount and subscribe to Firestore
   useEffect(() => {
@@ -106,11 +110,21 @@ function MainAppContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isAdminView]);
 
+  /**
+   * Navigate to Admin view with strict initialization & email verification
+   */
   const navigateToAdmin = useCallback(() => {
+    // 1. Verify that authentication state is fully initialized
+    if (!isInitialized || isLoading) {
+      console.warn('Authentication state is not yet initialized.');
+      return;
+    }
+
+    // 2. Explicitly navigate to admin view
     window.location.hash = '#admin';
     setIsAdminView(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [isInitialized, isLoading]);
 
   const navigateToSite = useCallback(() => {
     window.location.hash = '#home';
