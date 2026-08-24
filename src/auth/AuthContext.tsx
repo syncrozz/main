@@ -12,10 +12,13 @@ import {
   saveCustomAdminList
 } from './authService';
 import { MASTER_ADMIN_EMAIL } from './authConfig';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 interface AuthContextType extends AuthState {
   loginWithGoogleCredential: (credential: string) => Promise<boolean>;
   loginWithGoogleEmail: (email: string, displayName?: string, pictureUrl?: string) => Promise<boolean>;
+  loginWithRealGooglePopup: () => Promise<boolean>;
   logout: () => void;
   checkPermission: (permission: Permission) => boolean;
   addAdminEmail: (email: string) => boolean;
@@ -35,7 +38,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const savedUser = getSavedSession();
     if (savedUser) {
-      setUser(savedUser);
+      // Verify saved user still has admin role
+      const role = determineUserRole(savedUser.email, true);
+      if (role === 'MASTER_ADMIN' || role === 'ADMIN') {
+        setUser({ ...savedUser, role });
+      } else {
+        clearSession();
+        setUser(null);
+      }
     }
     setIsLoading(false);
   }, []);
@@ -74,14 +84,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Set user in state
       setUser(authenticatedUser);
-      saveSession(authenticatedUser);
 
       // Authorization Check
       if (role === 'MASTER_ADMIN' || role === 'ADMIN') {
+        saveSession(authenticatedUser);
         logAuditEvent('LOGIN_SUCCESS', normalizedEmail, 'SUCCESS', `Logged in as ${role}`);
         return true;
       } else {
-        logAuditEvent('LOGIN_DENIED', normalizedEmail, 'DENIED', `Attempted admin login with role ${role}`);
+        clearSession();
+        logAuditEvent('LOGIN_DENIED', normalizedEmail, 'DENIED', `Akses ditolak untuk emel ${normalizedEmail} (Peranan: USER)`);
+        setError(`Akses Ditolak: Akaun Google (${normalizedEmail}) tidak tersenarai sebagai Pentadbir SYNCROZZ. Hanya akaun yang diberi kebenaran (seperti khaikerr@gmail.com) dibenarkan masuk.`);
         return false;
       }
     } catch (err: any) {
@@ -93,6 +105,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   }, []);
+
+  /**
+   * Login using Real Firebase Google Popup
+   */
+  const loginWithRealGooglePopup = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const email = result.user.email;
+      if (!email) {
+        throw new Error('Akaun Google tidak mengembalikan maklumat emel.');
+      }
+      const displayName = result.user.displayName || email.split('@')[0];
+      const photoURL = result.user.photoURL || undefined;
+      const token = await result.user.getIdToken();
+
+      return await processGoogleLogin(email, displayName, photoURL, token);
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        setError('Log masuk Google telah dibatalkan oleh pengguna.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setError('Tetingkap log masuk Google disekat oleh pelayar (popup blocked). Sila benarkan tetingkap timbul untuk log masuk.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setError('Domain aplikasi ini belum didaftarkan dalam Firebase Auth. Sila gunakan simulasi atau daftar domain.');
+      } else {
+        setError(err?.message || 'Gagal log masuk dengan akaun Google.');
+      }
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [processGoogleLogin]);
 
   /**
    * Login using real Google Identity Services JWT Credential
@@ -208,6 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     loginWithGoogleCredential,
     loginWithGoogleEmail,
+    loginWithRealGooglePopup,
     logout,
     checkPermission,
     addAdminEmail,

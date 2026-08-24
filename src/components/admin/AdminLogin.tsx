@@ -9,14 +9,19 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessRedirect }) => {
-  const { loginWithGoogleEmail, loginWithGoogleCredential, isLoading, error, clearAuthError } = useAuth();
+  const { 
+    loginWithRealGooglePopup, 
+    loginWithGoogleEmail, 
+    isLoading, 
+    error, 
+    clearAuthError 
+  } = useAuth();
   const [customEmail, setCustomEmail] = useState('');
   const [showAdvancedTester, setShowAdvancedTester] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Initialize Google Identity Services (GSI) if available
   useEffect(() => {
-    // Check if google scripts can be initialized
     const scriptId = 'google-gsi-client';
     if (!document.getElementById(scriptId)) {
       const script = document.createElement('script');
@@ -28,12 +33,22 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
     }
   }, []);
 
-  const handleMasterAdminLogin = async () => {
+  const handleRealGoogleLogin = async () => {
+    clearAuthError();
+    setIsAuthenticating(true);
+    const success = await loginWithRealGooglePopup();
+    setIsAuthenticating(false);
+    if (success && onSuccessRedirect) {
+      onSuccessRedirect();
+    }
+  };
+
+  const handleSimulateAdminLogin = async (email: string, name: string) => {
     clearAuthError();
     setIsAuthenticating(true);
     const success = await loginWithGoogleEmail(
-      MASTER_ADMIN_EMAIL,
-      'Khaikerr (Master Admin)',
+      email,
+      name,
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
     );
     setIsAuthenticating(false);
@@ -57,6 +72,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
   const handleCustomTestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customEmail.trim()) return;
+    clearAuthError();
     setIsAuthenticating(true);
     await loginWithGoogleEmail(customEmail.trim());
     setIsAuthenticating(false);
@@ -117,16 +133,16 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
           </div>
         )}
 
-        {/* Primary Action Button: Continue with Google */}
+        {/* Primary Action Button: Continue with Google (Real Google OAuth popup) */}
         <div className="space-y-4">
           <button
             id="continue-with-google-btn"
-            onClick={handleMasterAdminLogin}
+            onClick={handleRealGoogleLogin}
             disabled={isLoading || isAuthenticating}
-            className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-300 shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
+            className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-300 shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden active:scale-[0.99]"
           >
             {/* Google G Logo SVG */}
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -146,13 +162,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
             </svg>
 
             <span className="text-sm font-medium text-slate-800">
-              {isLoading || isAuthenticating ? 'Mengesahkan dengan Google...' : 'Continue with Google'}
+              {isLoading || isAuthenticating ? 'Membuka Google OAuth...' : 'Continue with Google'}
             </span>
           </button>
 
           <div className="pt-2 text-center">
             <span className="text-[11px] text-slate-600 block">
-              Google OAuth 2.0 Protected • Master Admin Authorization Enforced
+              Pengesahan Sebenar Google OAuth 2.0 • Hanya akaun Master Admin (khaikerr@gmail.com) dibenarkan masuk
             </span>
           </div>
         </div>
@@ -160,28 +176,28 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
         {/* Separator */}
         <div className="my-6 relative flex items-center justify-center">
           <div className="w-full border-t border-slate-200" />
-          <span className="absolute bg-white px-3 text-[10px] uppercase font-bold tracking-wider text-slate-600">
-            Authorization Testing Suite
+          <span className="absolute bg-white px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Simulasi Ujian Akses
           </span>
         </div>
 
         {/* Quick Identity Test Buttons */}
         <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
           <div className="text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-            <span>Uji Keselamatan Akaun Google:</span>
+            <span>Uji Simulasi Peranan (Dev/Testing):</span>
             <button
               type="button"
               onClick={() => setShowAdvancedTester(!showAdvancedTester)}
               className="text-[10px] text-[#0056D2] font-semibold hover:underline cursor-pointer"
             >
-              {showAdvancedTester ? 'Tutup Ujian Kustom' : 'Emel Kustom'}
+              {showAdvancedTester ? 'Tutup Emel Kustom' : 'Emel Kustom'}
             </button>
           </div>
 
           {/* Master Admin Buttons */}
           <button
             id="test-master-admin-btn"
-            onClick={handleMasterAdminLogin}
+            onClick={() => handleSimulateAdminLogin(MASTER_ADMIN_EMAIL, 'Khaikerr (Master Admin)')}
             disabled={isLoading || isAuthenticating}
             className="w-full text-left py-2 px-3 rounded-lg bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition-colors flex items-center justify-between cursor-pointer"
           >
@@ -199,19 +215,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
 
           <button
             id="test-cikgu-admin-btn"
-            onClick={async () => {
-              clearAuthError();
-              setIsAuthenticating(true);
-              const success = await loginWithGoogleEmail(
-                'cikgukyee@gmail.com',
-                'Cikgu Kyee (Master Admin)',
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-              );
-              setIsAuthenticating(false);
-              if (success && onSuccessRedirect) {
-                onSuccessRedirect();
-              }
-            }}
+            onClick={() => handleSimulateAdminLogin('cikgukyee@gmail.com', 'Cikgu Kyee (Master Admin)')}
             disabled={isLoading || isAuthenticating}
             className="w-full text-left py-2 px-3 rounded-lg bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition-colors flex items-center justify-between cursor-pointer"
           >
@@ -230,15 +234,15 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
           {/* Unauthorized User Button */}
           <button
             id="test-unauthorized-btn"
-            onClick={() => handleUnauthorizedTestLogin('pelawat.biasa@gmail.com')}
+            onClick={() => handleUnauthorizedTestLogin('pelawat.luar@gmail.com')}
             disabled={isLoading || isAuthenticating}
             className="w-full text-left py-2 px-3 rounded-lg bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200 transition-colors flex items-center justify-between cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
               <div>
-                <div className="text-xs font-bold text-slate-800">pelawat.biasa@gmail.com</div>
-                <div className="text-[10px] text-amber-700 font-medium">Akaun Google Luar (Access Denied)</div>
+                <div className="text-xs font-bold text-slate-800">pelawat.luar@gmail.com</div>
+                <div className="text-[10px] text-amber-700 font-medium">Akaun Google Luar / Incognito (Akses Disekat)</div>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full">
