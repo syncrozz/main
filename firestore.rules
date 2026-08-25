@@ -6,10 +6,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Master Admin Helper: strictly locked to khaikerr@gmail.com
+    // Master Admin Helper: strictly locked to master admin emails
     function isMasterAdmin() {
       return isAuthenticated() && 
-        request.auth.token.email.lower() == 'khaikerr@gmail.com';
+        request.auth.token.email.lower() in ['khaikerr@gmail.com', 'admin@syncrozz.com', 'chegukay@gmail.com'];
     }
 
     // Public read-only access for platform OG images so all visitors see the cards

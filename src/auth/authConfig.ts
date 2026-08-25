@@ -15,7 +15,8 @@ export const MASTER_ADMIN_EMAIL = 'admin@syncrozz.com';
 
 export const MASTER_ADMIN_EMAILS: readonly string[] = [
   'admin@syncrozz.com',
-  'khaikerr@gmail.com'
+  'khaikerr@gmail.com',
+  'chegukay@gmail.com'
 ];
 
 /**

@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Sparkles
 } from 'lucide-react';
+import { submitInquiryApi } from '../services/apiService';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -50,13 +51,22 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitted(true);
-    }, 800);
+    try {
+      await submitInquiryApi({
+        name: formData.name,
+        email: formData.email,
+        organization: formData.institution ? `${formData.institution} (${formData.phone})` : formData.phone,
+        platformOfInterest: formData.platformInterest,
+        message: formData.message,
+      });
+    } catch (err) {
+      console.warn('Inquiry submission notice:', err);
+    }
+    setIsSubmitting(false);
+    setSubmitted(true);
   };
 
   const handleReset = () => {

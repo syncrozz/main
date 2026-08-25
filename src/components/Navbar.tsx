@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { label: 'Platform', href: '#platform', id: 'platform' },
     { label: 'Flow', href: '#flow', id: 'flow' },
     { label: 'Solutions', href: '#solutions', id: 'solutions' },
-    { label: 'Kos', href: '#kos', id: 'kos' },
+    { label: 'Price', href: '#kos', id: 'kos' },
     { label: 'About', href: '#about', id: 'about' },
     { label: 'Contact', href: '#contact', id: 'contact' },
   ];
@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleLogoClick = (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
     setMobileMenuOpen(false);
     if (onLogoClick) {
@@ -93,26 +93,27 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           
-          {/* Brand Logo */}
+          {/* Brand Logo & Title Home Trigger */}
           <a 
             href="#home" 
             id="brand-logo-btn"
             onClick={handleLogoClick}
-            className="flex items-center gap-2.5 group cursor-pointer"
-            title="Ke Paparan Default Dashboard"
+            className="flex items-center gap-2.5 group cursor-pointer select-none"
+            title="Kembali ke Laman Utama (Home)"
+            aria-label="Kembali ke Laman Utama SYNCROZZ"
           >
             {/* Official SYNCROZZ Logo Image */}
-            <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-2xs shadow-blue-500/20 transition-transform group-hover:scale-105 shrink-0 bg-white">
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-2xs shadow-blue-500/20 transition-transform group-hover:scale-105 shrink-0 bg-white cursor-pointer">
               <img 
                 src={SYNCROZZ_PRIMARY_LOGO} 
                 alt="SYNCROZZ" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain cursor-pointer"
                 referrerPolicy="no-referrer"
               />
             </div>
             
-            <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-[#0056D2] flex items-center gap-1 font-sans">
+            <div className="flex flex-col cursor-pointer">
+              <span className="text-xl font-black tracking-tight text-[#0056D2] flex items-center gap-1 font-sans cursor-pointer group-hover:text-blue-700 transition-colors">
                 SYNCROZZ
               </span>
             </div>

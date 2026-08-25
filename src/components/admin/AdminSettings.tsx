@@ -1,20 +1,15 @@
 import React from 'react';
 import { 
   ShieldCheck, 
-  Key, 
-  Lock, 
-  Globe, 
-  Server, 
   CheckCircle2, 
-  Clock, 
-  AlertTriangle,
-  FileCode,
-  Crown
+  Crown,
+  ExternalLink,
+  Image as ImageIcon,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { MASTER_ADMIN_EMAIL } from '../../auth/authConfig';
-import { SYNCROZZ_ASSET_CATALOG, SYNCROZZ_ASSET_BASE_URL, SYNCROZZ_OGI_OFFICIAL } from '../../data/syncrozzAssets';
-import { ExternalLink, Copy, Check, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { SYNCROZZ_OGI_OFFICIAL } from '../../data/syncrozzAssets';
 
 export const AdminSettings: React.FC = () => {
   const { user, isMasterAdmin } = useAuth();
@@ -187,85 +182,6 @@ export const AdminSettings: React.FC = () => {
               <span>Dikonfigurasikan secara langsung dalam tag <code className="font-mono text-blue-700 font-bold">&lt;meta property="og:image"&gt;</code> di index.html</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Official 13-Asset Directory Showcase (Folder MAIN) */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-[#0056D2]" />
-                <span>13 Fail Aset Rasmi Logo SYNCROZZ (Folder MAIN)</span>
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-[#0056D2]">
-                13 Official Files
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 pt-0.5">
-              Semua 13 fail asal dirujuk terus daripada repositori rasmi tanpa ubah suai atau penjanaan semula.
-            </p>
-          </div>
-
-          <a 
-            href="https://github.com/syncrozz/syncrozz-assets/tree/main/logo/MAIN"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0056D2] hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 shrink-0 cursor-pointer"
-          >
-            <span>Buka Folder GitHub MAIN</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {SYNCROZZ_ASSET_CATALOG.map((asset, idx) => (
-            <div 
-              key={asset.name} 
-              className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-blue-300 transition-all flex items-center gap-3 group"
-            >
-              {/* Preview Thumbnail */}
-              <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
-                {asset.name.endsWith('.webmanifest') ? (
-                  <FileCode className="w-6 h-6 text-slate-400" />
-                ) : (
-                  <img 
-                    src={asset.url} 
-                    alt={asset.name} 
-                    className="max-w-full max-h-full object-contain"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                )}
-              </div>
-
-              {/* Info & Raw Link */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-slate-400">#{idx + 1}</span>
-                  <div className="text-xs font-bold text-slate-900 truncate font-mono">{asset.name}</div>
-                </div>
-                <div className="text-[10px] text-slate-500 truncate">{asset.purpose}</div>
-                <div className="text-[9px] text-blue-600 font-mono mt-0.5">
-                  {asset.dimensions} • {asset.type}
-                </div>
-              </div>
-
-              {/* Direct Link Action */}
-              <a 
-                href={asset.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                title="Buka Aset Asal"
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-[#0056D2] group-hover:border-blue-200 shrink-0 cursor-pointer shadow-2xs"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          ))}
         </div>
       </div>
 

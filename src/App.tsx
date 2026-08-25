@@ -37,6 +37,14 @@ import {
   subscribeToDeletedDefaultPlatforms,
   logAuditEventToFirestore
 } from './services/firestoreService';
+import {
+  fetchPlatformsApi,
+  savePlatformApi,
+  deletePlatformApi,
+  fetchOgImagesApi,
+  saveOgImageApi,
+  syncUserToDatabase
+} from './services/apiService';
 
 function MainAppContent() {
   const { user, isAuthenticated, isAdmin, isMasterAdmin, isInitialized, isLoading } = useAuth();
@@ -86,13 +94,26 @@ function MainAppContent() {
     };
   }, [isInitialized, isLoading]);
 
-  // Load custom OG images and subscribe to Firestore
+  // Load custom OG images and subscribe to Firestore & Database API
   useEffect(() => {
     // 1. Initial load from localStorage
     const local = getCustomOgImages();
     setCustomOgImages(local);
 
-    // 2. Real-time sync OG images from Firestore
+    // 2. Fetch from PostgreSQL / Cloud SQL API
+    fetchPlatformsApi().then((dbPlatforms) => {
+      if (dbPlatforms && dbPlatforms.length > 0) {
+        setPlatforms(dbPlatforms);
+      }
+    });
+
+    fetchOgImagesApi().then((dbImages) => {
+      if (dbImages && Object.keys(dbImages).length > 0) {
+        setCustomOgImages((prev) => ({ ...prev, ...dbImages }));
+      }
+    });
+
+    // 3. Real-time sync OG images from Firestore
     const unsubscribeOg = subscribeToOgImages((firestoreImages) => {
       if (firestoreImages && Object.keys(firestoreImages).length > 0) {
         setCustomOgImages((prev) => ({
@@ -102,7 +123,7 @@ function MainAppContent() {
       }
     });
 
-    // 3. Real-time sync Custom Platforms & Deleted Platforms from Firestore
+    // 4. Real-time sync Custom Platforms & Deleted Platforms from Firestore
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
       latestCustomPlatformsRef.current = firestorePlatforms || [];
       const merged = getAllPlatforms(latestCustomPlatformsRef.current, latestDeletedIdsRef.current);
@@ -115,7 +136,7 @@ function MainAppContent() {
       setPlatforms(merged);
     });
 
-    // 4. Real-time sync Custom Platform URLs
+    // 5. Real-time sync Custom Platform URLs
     const unsubscribeUrls = subscribeToCustomPlatformUrls((urls) => {
       if (urls && Object.keys(urls).length > 0) {
         try {
@@ -132,6 +153,18 @@ function MainAppContent() {
       unsubscribeUrls();
     };
   }, []);
+
+  // Sync authenticated user to Database
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      syncUserToDatabase({
+        uid: user.id || user.email,
+        email: user.email,
+        displayName: user.name,
+        photoUrl: user.picture
+      });
+    }
+  }, [isAuthenticated, user]);
 
   // Handle active section on scroll
   useEffect(() => {
@@ -211,6 +244,7 @@ function MainAppContent() {
   const handleSaveOgImage = (platformId: string, dataUrl: string) => {
     saveCustomOgImage(platformId, dataUrl);
     saveOgImageToFirestore(platformId, dataUrl, user?.email || undefined).catch(() => {});
+    saveOgImageApi(platformId, dataUrl, user?.token, user?.email || undefined).catch(() => {});
     setCustomOgImages((prev) => ({
       ...prev,
       [platformId]: dataUrl
@@ -231,6 +265,7 @@ function MainAppContent() {
     const updated = savePlatform(platform);
     setPlatforms(updated);
     savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
+    savePlatformApi(platform, user?.token, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('SAVE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform ${platform.name} (#${platform.id}) saved.`).catch(() => {});
 
     if (ogImageDataUrl) {
@@ -242,6 +277,7 @@ function MainAppContent() {
     const updated = deletePlatform(platformId);
     setPlatforms(updated);
     deletePlatformFromFirestore(platformId).catch(() => {});
+    deletePlatformApi(platformId, user?.token, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
   };
 

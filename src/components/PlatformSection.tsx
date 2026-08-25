@@ -66,7 +66,6 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
     { label: 'Campus', value: 'Campus', icon: <Building2 className="w-4 h-4" /> },
     { label: 'Productivity', value: 'Productivity', icon: <Zap className="w-4 h-4" /> },
     { label: 'Community', value: 'Community', icon: <Users className="w-4 h-4" /> },
-    { label: 'Innovation', value: 'Innovation', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
   const filteredPlatforms = useMemo(() => {
