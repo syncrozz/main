@@ -1,10 +1,33 @@
 import { AuthUser, UserRole, Permission, AuditLogEntry } from './types';
-import { MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
+import { ADMIN_PIN, MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
 import { logAuditEventToFirestore } from '../services/firestoreService';
 
 const SESSION_KEY = 'syncrozz_auth_session';
 const ADMIN_REGISTRY_KEY = 'syncrozz_admin_registry';
 const AUDIT_LOGS_KEY = 'syncrozz_audit_logs';
+
+/**
+ * Validate Admin Access PIN Code
+ */
+export function validateAdminPin(pin: string): boolean {
+  return pin.trim() === ADMIN_PIN;
+}
+
+/**
+ * Create Admin Session from PIN
+ */
+export function createAdminSessionFromPin(): AuthUser {
+  return {
+    id: 'usr_admin_master',
+    email: 'admin@syncrozz.com',
+    name: 'SYNCROZZ Admin',
+    picture: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/MAIN/android-chrome-192x192.png',
+    role: 'MASTER_ADMIN',
+    isEmailVerified: true,
+    provider: 'pin',
+    authTime: Date.now()
+  };
+}
 
 /**
  * Get dynamic admin list from storage

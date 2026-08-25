@@ -275,7 +275,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
             <button
               id="admin-gear-access-btn"
               onClick={onAdminClick || onOpenAdminModal}
-              title="Akses Papan Pemuka Pentadbir (Google OAuth 2.0 Master Admin)"
+              title="Akses Mod Admin"
               className="p-2 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-[#0056D2] transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer shadow-2xs"
             >
               <Settings className="w-3.5 h-3.5 text-[#0056D2]" />

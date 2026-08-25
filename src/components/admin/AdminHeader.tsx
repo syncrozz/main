@@ -38,7 +38,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     { id: 'overview', label: 'Papan Pemuka', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'platforms', label: 'Open Graph & Platform', icon: <Layers className="w-4 h-4" /> },
     { id: 'users', label: 'Pengguna & Peranan', icon: <Users className="w-4 h-4" /> },
-    { id: 'settings', label: 'OAuth & Keselamatan', icon: <Settings className="w-4 h-4" /> },
+    { id: 'settings', label: 'PIN & Keselamatan', icon: <Settings className="w-4 h-4" /> },
     { id: 'logs', label: 'Log Audit', icon: <FileText className="w-4 h-4" /> }
   ];
 

@@ -7,7 +7,7 @@ export interface AuthUser {
   picture?: string;
   role: UserRole;
   isEmailVerified: boolean;
-  provider: 'google';
+  provider: 'google' | 'pin';
   authTime: number;
   token?: string;
 }

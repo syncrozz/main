@@ -1,26 +1,27 @@
 import { UserRole, Permission, RolePermissions } from './types';
 
 /**
- * MASTER ADMIN CONFIGURATION
- * Strict Master Admin Identity for SYNCROZZ.
- * This is the ultimate authority in the platform.
+ * ADMIN ACCESS PIN CODE
+ * Secret 4-digit PIN for Admin Mode Access.
+ * (Not displayed in UI)
  */
-export const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
+export const ADMIN_PIN = '5313';
 
 /**
- * List of authorized Master Admin emails.
- * Checked against verified Google OAuth emails.
+ * MASTER ADMIN CONFIGURATION
+ * Default Administrator Identity for SYNCROZZ.
  */
+export const MASTER_ADMIN_EMAIL = 'admin@syncrozz.com';
+
 export const MASTER_ADMIN_EMAILS: readonly string[] = [
+  'admin@syncrozz.com',
   'khaikerr@gmail.com'
 ];
 
 /**
- * Secondary Admin emails list (can also be loaded dynamically from server/storage)
+ * Secondary Admin emails list
  */
-export const INITIAL_ADMIN_EMAILS: readonly string[] = [
-  // Additional standard admin emails can be added here or via the admin UI
-];
+export const INITIAL_ADMIN_EMAILS: readonly string[] = [];
 
 /**
  * Role Permission Matrix
@@ -28,7 +29,7 @@ export const INITIAL_ADMIN_EMAILS: readonly string[] = [
 export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   MASTER_ADMIN: {
     role: 'MASTER_ADMIN',
-    description: 'Akses Penuh Pentadbir Tertinggi (Master Admin) — kawalan menyeluruh sistem, peranan pengguna, platform, dan keselamatan.',
+    description: 'Akses Penuh Pentadbir (Admin) — kawalan menyeluruh sistem, platform, visual Open Graph, dan keselamatan.',
     permissions: [
       'VIEW_ADMIN_DASHBOARD',
       'MANAGE_PLATFORMS',
@@ -52,7 +53,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   },
   USER: {
     role: 'USER',
-    description: 'Pengguna Biasa / Pelawat Google — tiada kebenaran untuk kawasan pentadbiran.',
+    description: 'Pelawat Biasa — tiada kebenaran untuk kawasan pentadbiran.',
     permissions: []
   }
 };

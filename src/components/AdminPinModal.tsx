@@ -1,32 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, Key, ArrowLeft, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../auth/AuthContext';
-import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
+import { Lock, Key, X, AlertCircle } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 
-interface AdminLoginProps {
-  onBackToHome: () => void;
-  onSuccessRedirect?: () => void;
+interface AdminPinModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessRedirect }) => {
+export const AdminPinModal: React.FC<AdminPinModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess
+}) => {
   const { loginWithPin } = useAuth();
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input on mount
+  // Focus input automatically whenever modal opens
   useEffect(() => {
-    setPin('');
-    setErrorMsg(null);
-    setIsSubmitting(false);
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
+    if (isOpen) {
+      setPin('');
+      setErrorMsg(null);
+      setIsSubmitting(false);
+      // Immediate and delayed focus to ensure cursor is active
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
-  // Validation function
+  // Unified authentication/validation function
   const handleValidatePin = useCallback(async (pinToTest: string) => {
     if (isSubmitting) return;
 
@@ -45,93 +53,114 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
       setIsSubmitting(false);
       setPin('');
       setErrorMsg(null);
-      if (onSuccessRedirect) {
-        onSuccessRedirect();
-      }
+      onClose();
+      onSuccess();
     } else {
       setIsSubmitting(false);
       setPin('');
       setErrorMsg('PIN tidak sah. Sila cuba lagi.');
+      // Refocus immediately so user can type again right away
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
     }
-  }, [isSubmitting, loginWithPin, onSuccessRedirect]);
+  }, [isSubmitting, loginWithPin, onClose, onSuccess]);
 
   // Handle keyboard inputs: auto-submit on 4th digit
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
+    // Only accept numeric digits, maximum 4 characters
     const numericValue = rawValue.replace(/\D/g, '').slice(0, 4);
     setPin(numericValue);
     if (errorMsg) setErrorMsg(null);
 
-    // Auto enter when 4th digit is entered
+    // Auto-enter / auto-submit immediately when the 4th digit is entered
     if (numericValue.length === 4) {
       handleValidatePin(numericValue);
     }
   };
 
+  // Keyboard navigation: Enter to submit, Escape to close
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleValidatePin(pin);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Decorative subtle background glows */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl pointer-events-none" />
+  // Global Escape key listener
+  useEffect(() => {
+    if (!isOpen) return;
 
-      {/* Top back button */}
-      <div className="w-full max-w-sm mb-6 flex justify-between items-center z-10">
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal Card */}
+      <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-modal-title"
+        className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 sm:p-8 z-10 text-center animate-in fade-in zoom-in-95 duration-150"
+      >
+        {/* Close Button */}
         <button
-          id="admin-login-back-btn"
-          onClick={onBackToHome}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors py-1.5 px-3 rounded-lg hover:bg-slate-200/60 cursor-pointer"
+          onClick={onClose}
+          aria-label="Tutup"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali ke Laman Utama</span>
+          <X className="w-4 h-4" />
         </button>
 
-        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider font-mono">
-          Admin Portal
-        </span>
-      </div>
-
-      {/* Main Login Card */}
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200 p-7 sm:p-8 relative z-10 text-center">
-        
-        {/* Brand Logo & Lock Icon */}
+        {/* Top 🔒 Icon */}
         <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0056D2] shadow-xs mb-4">
           <Lock className="w-6 h-6" />
         </div>
 
-        {/* Title & Subtitle */}
-        <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+        {/* Header Title & Subtitle */}
+        <h2 id="admin-modal-title" className="text-xl font-extrabold text-slate-900 tracking-tight">
           Akses Mod Admin
-        </h1>
+        </h2>
 
         <p className="text-xs text-slate-500 mt-1.5 mb-6 leading-relaxed font-normal">
           Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.
         </p>
 
-        {/* PIN Form */}
+        {/* PIN Input & Form */}
         <form 
           onSubmit={(e) => {
             e.preventDefault();
             handleValidatePin(pin);
           }}
-          className="space-y-4 text-left"
+          className="space-y-4"
         >
           <div>
-            <label htmlFor="admin-page-pin-input" className="sr-only">
+            <label htmlFor="admin-pin-input" className="sr-only">
               Masukkan 4-digit PIN
             </label>
             <input
               ref={inputRef}
-              id="admin-page-pin-input"
+              id="admin-pin-input"
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
@@ -152,7 +181,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
 
           {/* Error Message */}
           {errorMsg && (
-            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in slide-in-from-top-1">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -161,7 +190,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
           {/* Submit Button */}
           <button
             type="submit"
-            id="admin-page-pin-submit-btn"
+            id="admin-pin-submit-btn"
             disabled={isSubmitting || pin.length === 0}
             className="w-full py-3 px-4 rounded-xl bg-[#0056D2] hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white font-bold text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >

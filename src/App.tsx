@@ -14,6 +14,7 @@ import { PlatformModal } from './components/PlatformModal';
 import { ContactModal } from './components/ContactModal';
 import { VideoDemoModal } from './components/VideoDemoModal';
 import { AdminOgModal } from './components/AdminOgModal';
+import { AdminPinModal } from './components/AdminPinModal';
 import { SupportModal } from './components/SupportModal';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PLATFORMS_DATA } from './data/platforms';
@@ -26,13 +27,14 @@ import {
 } from './services/firestoreService';
 
 function MainAppContent() {
-  const { user, isInitialized, isLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, isMasterAdmin, isInitialized, isLoading } = useAuth();
   const [isAdminView, setIsAdminView] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
@@ -111,20 +113,24 @@ function MainAppContent() {
   }, [isAdminView]);
 
   /**
-   * Navigate to Admin view with strict initialization & email verification
+   * Navigate to Admin view with strict initialization
    */
   const navigateToAdmin = useCallback(() => {
-    // 1. Verify that authentication state is fully initialized
-    if (!isInitialized || isLoading) {
-      console.warn('Authentication state is not yet initialized.');
-      return;
-    }
-
-    // 2. Explicitly navigate to admin view
     window.location.hash = '#admin';
     setIsAdminView(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [isInitialized, isLoading]);
+  }, []);
+
+  /**
+   * Open PIN modal if not authenticated, or navigate to Admin view if already logged in
+   */
+  const handleAdminAccess = useCallback(() => {
+    if (isAuthenticated && (isAdmin || isMasterAdmin)) {
+      navigateToAdmin();
+    } else {
+      setIsAdminPinModalOpen(true);
+    }
+  }, [isAuthenticated, isAdmin, isMasterAdmin, navigateToAdmin]);
 
   const navigateToSite = useCallback(() => {
     window.location.hash = '#home';
@@ -198,7 +204,7 @@ function MainAppContent() {
         activeSection={activeSection}
         isAdminMode={isAdminMode}
         onOpenAdminModal={() => setIsAdminModalOpen(true)}
-        onAdminClick={navigateToAdmin}
+        onAdminClick={handleAdminAccess}
       />
 
       {/* Main Content Area */}
@@ -221,7 +227,7 @@ function MainAppContent() {
           isAdminMode={isAdminMode}
           onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
           onOpenAdminModal={() => setIsAdminModalOpen(true)}
-          onAdminClick={navigateToAdmin}
+          onAdminClick={handleAdminAccess}
         />
 
         {/* 4. Ecosystem Visual ("Flow") */}
@@ -253,7 +259,7 @@ function MainAppContent() {
       <Footer
         onPlatformClick={handleSelectPlatformById}
         onContactClick={() => setIsContactOpen(true)}
-        onAdminClick={navigateToAdmin}
+        onAdminClick={handleAdminAccess}
         onSupportClick={() => setIsSupportOpen(true)}
       />
 
@@ -286,6 +292,13 @@ function MainAppContent() {
         isOpen={isVideoDemoOpen}
         onClose={() => setIsVideoDemoOpen(false)}
         onExploreClick={() => scrollToSection('platform')}
+      />
+
+      {/* Admin PIN Access Modal (Keyboard-first, auto-focus, auto-submit) */}
+      <AdminPinModal
+        isOpen={isAdminPinModalOpen}
+        onClose={() => setIsAdminPinModalOpen(false)}
+        onSuccess={navigateToAdmin}
       />
 
       {/* Admin Mode Modal for Open Graph Image Uploads */}

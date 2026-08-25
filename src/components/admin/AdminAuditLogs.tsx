@@ -70,7 +70,7 @@ export const AdminAuditLogs: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-500">
-            Rekod masa sebenar (real-time telemetry) bagi semua sesi log masuk Google, percubaan akses tidak sah (Access Denied), dan perubahan peranan.
+            Rekod masa sebenar (real-time telemetry) bagi semua sesi log masuk pentadbir, percubaan PIN, dan aktiviti pengurusan sistem.
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export const AdminAuditLogs: React.FC = () => {
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4 sm:px-6">Masa & Tarikh</th>
-                <th className="py-3 px-4">Akaun Google</th>
+                <th className="py-3 px-4">Pengguna / Sesi</th>
                 <th className="py-3 px-4">Tindakan</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Butiran Peristiwa</th>

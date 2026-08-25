@@ -127,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="header-admin-portal-btn"
                 onClick={onAdminClick}
-                title="Akses Pentadbir (Google OAuth 2.0 Master Admin)"
+                title="Akses Mod Admin"
                 className="px-2.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-[#0056D2] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 aria-label="Akses Admin"
               >

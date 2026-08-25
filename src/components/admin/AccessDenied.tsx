@@ -34,18 +34,18 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
 
         {/* Title */}
         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
-          Access Denied
+          Akses Ditolak
         </h2>
 
         {/* Requisite Error Text */}
         <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
-          Your Google account is not authorized to access the SYNCROZZ Admin Panel.
+          Sesi anda tidak mempunyai kebenaran untuk mengakses Papan Pemuka Pentadbir SYNCROZZ.
         </p>
 
         {/* Identity Verification Card */}
         <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 text-left mb-6 space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
-            <span>Akaun Google Yang Disahkan:</span>
+            <span>Status Pengesahan:</span>
             <span className="text-red-800 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-bold">
               Tiada Kebenaran
             </span>
@@ -66,17 +66,17 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
             )}
             <div className="overflow-hidden">
               <div className="text-xs font-bold text-slate-900 truncate">
-                {user?.name || 'Google User'}
+                {user?.name || 'Pelawat'}
               </div>
               <div className="text-[11px] font-mono text-slate-500 truncate">
-                {user?.email || 'unauthorized@gmail.com'}
+                {user?.email || 'unauthorized'}
               </div>
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-            <span>Peranan Diberikan:</span>
-            <span className="font-mono font-semibold text-slate-700">USER (Standard)</span>
+            <span>Peranan Semasa:</span>
+            <span className="font-mono font-semibold text-slate-700">{user?.role || 'USER'}</span>
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
             className="w-full py-3 px-4 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Cuba Akaun Google Lain</span>
+            <span>Masukkan PIN Pentadbir</span>
           </button>
 
           <button
