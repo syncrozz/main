@@ -5,19 +5,26 @@ import { AdminPlatforms } from './AdminPlatforms';
 import { AdminUsers } from './AdminUsers';
 import { AdminSettings } from './AdminSettings';
 import { AdminAuditLogs } from './AdminAuditLogs';
+import { PlatformItem } from '../../types';
 
 interface AdminDashboardProps {
   onExitToWebsite: () => void;
   customOgImages: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
+  platforms: PlatformItem[];
+  onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
+  onDeletePlatform: (platformId: string) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onExitToWebsite,
   customOgImages,
   onSaveOgImage,
-  onRemoveOgImage
+  onRemoveOgImage,
+  platforms,
+  onSavePlatform,
+  onDeletePlatform
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
@@ -42,9 +49,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'platforms' && (
           <AdminPlatforms
+            platforms={platforms}
             customOgImages={customOgImages}
             onSaveOgImage={onSaveOgImage}
             onRemoveOgImage={onRemoveOgImage}
+            onSavePlatform={onSavePlatform}
+            onDeletePlatform={onDeletePlatform}
           />
         )}
 

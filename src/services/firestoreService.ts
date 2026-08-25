@@ -110,3 +110,44 @@ export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => voi
     return () => {};
   }
 }
+
+// 3. Dynamic Platforms Synchronization with Firestore
+export async function savePlatformToFirestore(platform: any, userEmail?: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'customPlatforms', platform.id);
+    await setDoc(docRef, {
+      ...platform,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail || 'admin'
+    });
+  } catch (error) {
+    console.error('Error saving platform to Firestore:', error);
+  }
+}
+
+export async function deletePlatformFromFirestore(platformId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'customPlatforms', platformId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('Error deleting platform from Firestore:', error);
+  }
+}
+
+export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void): () => void {
+  try {
+    const colRef = collection(db, 'customPlatforms');
+    return onSnapshot(colRef, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      callback(list);
+    }, (error) => {
+      console.warn('Firestore Custom Platforms subscription error:', error);
+    });
+  } catch (e) {
+    console.warn('Could not subscribe to custom platforms:', e);
+    return () => {};
+  }
+}

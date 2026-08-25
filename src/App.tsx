@@ -17,24 +17,36 @@ import { AdminOgModal } from './components/AdminOgModal';
 import { AdminPinModal } from './components/AdminPinModal';
 import { SupportModal } from './components/SupportModal';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { PlatformFormModal } from './components/admin/PlatformFormModal';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
 import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage } from './utils/ogStorage';
 import { 
+  getAllPlatforms, 
+  savePlatform, 
+  deletePlatform 
+} from './utils/platformStorage';
+import { 
   saveOgImageToFirestore, 
   removeOgImageFromFirestore, 
-  subscribeToOgImages 
+  subscribeToOgImages,
+  savePlatformToFirestore,
+  deletePlatformFromFirestore,
+  subscribeToCustomPlatforms,
+  logAuditEventToFirestore
 } from './services/firestoreService';
 
 function MainAppContent() {
   const { user, isAuthenticated, isAdmin, isMasterAdmin, isInitialized, isLoading } = useAuth();
   const [isAdminView, setIsAdminView] = useState(false);
+  const [platforms, setPlatforms] = useState<PlatformItem[]>(() => getAllPlatforms());
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
+  const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
@@ -68,14 +80,14 @@ function MainAppContent() {
     };
   }, [isInitialized, isLoading]);
 
-  // Load custom OG images on mount and subscribe to Firestore
+  // Load custom OG images and subscribe to Firestore
   useEffect(() => {
     // 1. Initial load from localStorage
     const local = getCustomOgImages();
     setCustomOgImages(local);
 
-    // 2. Real-time sync from Firestore
-    const unsubscribe = subscribeToOgImages((firestoreImages) => {
+    // 2. Real-time sync OG images from Firestore
+    const unsubscribeOg = subscribeToOgImages((firestoreImages) => {
       if (firestoreImages && Object.keys(firestoreImages).length > 0) {
         setCustomOgImages((prev) => ({
           ...prev,
@@ -84,7 +96,18 @@ function MainAppContent() {
       }
     });
 
-    return () => unsubscribe();
+    // 3. Real-time sync Platforms from Firestore
+    const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
+      if (firestorePlatforms && firestorePlatforms.length > 0) {
+        const merged = getAllPlatforms(firestorePlatforms);
+        setPlatforms(merged);
+      }
+    });
+
+    return () => {
+      unsubscribeOg();
+      unsubscribePlatforms();
+    };
   }, []);
 
   // Handle active section on scroll
@@ -156,7 +179,7 @@ function MainAppContent() {
   };
 
   const handleSelectPlatformById = (id: string) => {
-    const found = PLATFORMS_DATA.find((p) => p.id === id);
+    const found = platforms.find((p) => p.id === id) || PLATFORMS_DATA.find((p) => p.id === id);
     if (found) {
       setSelectedPlatform(found);
     }
@@ -164,7 +187,7 @@ function MainAppContent() {
 
   const handleSaveOgImage = (platformId: string, dataUrl: string) => {
     saveCustomOgImage(platformId, dataUrl);
-    saveOgImageToFirestore(platformId, dataUrl).catch(() => {});
+    saveOgImageToFirestore(platformId, dataUrl, user?.email || undefined).catch(() => {});
     setCustomOgImages((prev) => ({
       ...prev,
       [platformId]: dataUrl
@@ -181,6 +204,24 @@ function MainAppContent() {
     });
   };
 
+  const handleSavePlatform = (platform: PlatformItem, ogImageDataUrl?: string) => {
+    const updated = savePlatform(platform);
+    setPlatforms(updated);
+    savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
+    logAuditEventToFirestore('SAVE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform ${platform.name} (#${platform.id}) saved.`).catch(() => {});
+
+    if (ogImageDataUrl) {
+      handleSaveOgImage(platform.id, ogImageDataUrl);
+    }
+  };
+
+  const handleDeletePlatform = (platformId: string) => {
+    const updated = deletePlatform(platformId);
+    setPlatforms(updated);
+    deletePlatformFromFirestore(platformId).catch(() => {});
+    logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
+  };
+
   // IF ADMIN VIEW: Render Protected Admin Route
   if (isAdminView) {
     return (
@@ -189,6 +230,9 @@ function MainAppContent() {
         customOgImages={customOgImages}
         onSaveOgImage={handleSaveOgImage}
         onRemoveOgImage={handleRemoveOgImage}
+        platforms={platforms}
+        onSavePlatform={handleSavePlatform}
+        onDeletePlatform={handleDeletePlatform}
       />
     );
   }
@@ -221,6 +265,7 @@ function MainAppContent() {
 
         {/* 3. Platform Section ("Satu Platform, Banyak Penyelesaian") */}
         <PlatformSection
+          platforms={platforms}
           onSelectPlatform={(platform) => setSelectedPlatform(platform)}
           customOgImages={customOgImages}
           onSaveOgImage={handleSaveOgImage}
@@ -229,6 +274,7 @@ function MainAppContent() {
           onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
           onOpenAdminModal={() => setIsAdminModalOpen(true)}
           onAdminClick={handleAdminAccess}
+          onAddPlatformClick={() => setIsAddPlatformModalOpen(true)}
         />
 
         {/* 4. Ecosystem Visual ("Flow") */}
@@ -272,6 +318,14 @@ function MainAppContent() {
         customOgImages={customOgImages}
         onSaveOgImage={handleSaveOgImage}
         isAdminMode={isAdminMode}
+      />
+
+      {/* Quick Add Platform Modal for Admins */}
+      <PlatformFormModal
+        isOpen={isAddPlatformModalOpen}
+        onClose={() => setIsAddPlatformModalOpen(false)}
+        onSave={handleSavePlatform}
+        existingIds={platforms.map(p => p.id)}
       />
 
       <ContactModal

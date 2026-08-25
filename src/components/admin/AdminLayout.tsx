@@ -3,19 +3,26 @@ import { useAuth } from '../../auth/AuthContext';
 import { AdminLogin } from './AdminLogin';
 import { AccessDenied } from './AccessDenied';
 import { AdminDashboard } from './AdminDashboard';
+import { PlatformItem } from '../../types';
 
 interface AdminLayoutProps {
   onExitToWebsite: () => void;
   customOgImages: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
+  platforms: PlatformItem[];
+  onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
+  onDeletePlatform: (platformId: string) => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onExitToWebsite,
   customOgImages,
   onSaveOgImage,
-  onRemoveOgImage
+  onRemoveOgImage,
+  platforms,
+  onSavePlatform,
+  onDeletePlatform
 }) => {
   const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
 
@@ -60,6 +67,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       customOgImages={customOgImages}
       onSaveOgImage={onSaveOgImage}
       onRemoveOgImage={onRemoveOgImage}
+      platforms={platforms}
+      onSavePlatform={onSavePlatform}
+      onDeletePlatform={onDeletePlatform}
     />
   );
 };

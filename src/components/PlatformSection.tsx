@@ -19,7 +19,8 @@ import {
   Eye,
   Check,
   ShieldAlert,
-  Info
+  Info,
+  Plus
 } from 'lucide-react';
 import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem, PlatformCategory } from '../types';
@@ -27,6 +28,7 @@ import { generateDefaultOgImage } from '../utils/ogStorage';
 import { useAuth } from '../auth/AuthContext';
 
 interface PlatformSectionProps {
+  platforms?: PlatformItem[];
   onSelectPlatform: (platform: PlatformItem) => void;
   customOgImages: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
@@ -35,9 +37,11 @@ interface PlatformSectionProps {
   onToggleAdminMode: () => void;
   onOpenAdminModal: () => void;
   onAdminClick?: () => void;
+  onAddPlatformClick?: () => void;
 }
 
 export const PlatformSection: React.FC<PlatformSectionProps> = ({ 
+  platforms = PLATFORMS_DATA,
   onSelectPlatform,
   customOgImages,
   onSaveOgImage,
@@ -45,7 +49,8 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
   isAdminMode,
   onToggleAdminMode,
   onOpenAdminModal,
-  onAdminClick
+  onAdminClick,
+  onAddPlatformClick
 }) => {
   const { isAuthenticated, isAdmin, isMasterAdmin } = useAuth();
   const hasAdminAccess = isAdminMode || (isAuthenticated && (isAdmin || isMasterAdmin));
@@ -65,7 +70,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
   ];
 
   const filteredPlatforms = useMemo(() => {
-    return PLATFORMS_DATA.filter((item) => {
+    return platforms.filter((item) => {
       const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
       const matchesSearch = 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,7 +81,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
 
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [platforms, selectedCategory, searchQuery]);
 
   const handleCardImageUpload = (platformId: string, file: File) => {
     if (!file) return;
@@ -271,6 +276,19 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
+            {/* Add Platform Button for Admins */}
+            {hasAdminAccess && onAddPlatformClick && (
+              <button
+                id="admin-add-platform-btn"
+                onClick={onAddPlatformClick}
+                title="Tambah Platform / Produk Baharu"
+                className="p-2 px-3 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer shadow-xs active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Platform</span>
+              </button>
+            )}
+
             {/* Gear Icon to Access Admin Portal */}
             <button
               id="admin-gear-access-btn"
