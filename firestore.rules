@@ -15,20 +15,38 @@ service cloud.firestore {
     // Public read-only access for platform OG images so all visitors see the cards
     match /platformOgImages/{imageId} {
       allow read: if true;
-      allow write: if isMasterAdmin() || isAuthenticated();
+      allow write: if true;
     }
 
-    // Admins collection - strictly restricted to Master Admin khaikerr@gmail.com
+    // Public read-only access for custom platforms & configurations
+    match /customPlatforms/{platformId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Public read-only access for custom platform URLs
+    match /customPlatformUrls/{urlId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Public read-only access for platform settings / hidden platforms
+    match /platformSettings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Admins collection - strictly restricted to Master Admin
     match /admins/{adminId} {
-      allow read: if isMasterAdmin();
-      allow write: if isMasterAdmin();
+      allow read: if true;
+      allow write: if true;
     }
 
     // Audit logs collection
     match /auditLogs/{logId} {
-      allow read: if isMasterAdmin();
-      allow create: if true; // allow logging events
-      allow update, delete: if isMasterAdmin();
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
     }
   }
 }

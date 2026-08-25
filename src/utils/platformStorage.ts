@@ -1,5 +1,6 @@
 import { PlatformItem } from '../types';
 import { PLATFORMS_DATA } from '../data/platforms';
+import { saveDeletedDefaultPlatformIdsToFirestore } from '../services/firestoreService';
 
 const CUSTOM_PLATFORMS_STORAGE_KEY = 'syncrozz_custom_platforms_v1';
 const DELETED_DEFAULT_PLATFORMS_KEY = 'syncrozz_deleted_default_platforms_v1';
@@ -47,6 +48,7 @@ export function saveLocalCustomPlatforms(platforms: PlatformItem[]): void {
 export function saveDeletedDefaultPlatformIds(ids: string[]): void {
   try {
     localStorage.setItem(DELETED_DEFAULT_PLATFORMS_KEY, JSON.stringify(ids));
+    saveDeletedDefaultPlatformIdsToFirestore(ids).catch(() => {});
   } catch (e) {
     console.error('Failed to save deleted platform IDs:', e);
   }
@@ -55,9 +57,13 @@ export function saveDeletedDefaultPlatformIds(ids: string[]): void {
 /**
  * Get combined list of all platforms (built-in defaults + custom added, with overrides)
  */
-export function getAllPlatforms(firestoreCustomList?: PlatformItem[]): PlatformItem[] {
+export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreDeletedIds?: string[]): PlatformItem[] {
   const localCustom = getLocalCustomPlatforms();
-  const deletedIds = new Set(getDeletedDefaultPlatformIds());
+  const localDeleted = getDeletedDefaultPlatformIds();
+  
+  const deletedIds = new Set(
+    firestoreDeletedIds !== undefined ? firestoreDeletedIds : localDeleted
+  );
 
   // Use firestore list if provided, otherwise local
   const customList = firestoreCustomList && firestoreCustomList.length > 0 ? firestoreCustomList : localCustom;

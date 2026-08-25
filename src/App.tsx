@@ -33,6 +33,8 @@ import {
   savePlatformToFirestore,
   deletePlatformFromFirestore,
   subscribeToCustomPlatforms,
+  subscribeToCustomPlatformUrls,
+  subscribeToDeletedDefaultPlatforms,
   logAuditEventToFirestore
 } from './services/firestoreService';
 
@@ -50,6 +52,10 @@ function MainAppContent() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState('home');
+
+  // Keep latest snapshot refs for merging
+  const latestCustomPlatformsRef = React.useRef<PlatformItem[]>([]);
+  const latestDeletedIdsRef = React.useRef<string[]>([]);
 
   // Verify route after authentication state is fully initialized
   useEffect(() => {
@@ -96,17 +102,34 @@ function MainAppContent() {
       }
     });
 
-    // 3. Real-time sync Platforms from Firestore
+    // 3. Real-time sync Custom Platforms & Deleted Platforms from Firestore
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
-      if (firestorePlatforms && firestorePlatforms.length > 0) {
-        const merged = getAllPlatforms(firestorePlatforms);
-        setPlatforms(merged);
+      latestCustomPlatformsRef.current = firestorePlatforms || [];
+      const merged = getAllPlatforms(latestCustomPlatformsRef.current, latestDeletedIdsRef.current);
+      setPlatforms(merged);
+    });
+
+    const unsubscribeDeleted = subscribeToDeletedDefaultPlatforms((deletedIds) => {
+      latestDeletedIdsRef.current = deletedIds || [];
+      const merged = getAllPlatforms(latestCustomPlatformsRef.current, latestDeletedIdsRef.current);
+      setPlatforms(merged);
+    });
+
+    // 4. Real-time sync Custom Platform URLs
+    const unsubscribeUrls = subscribeToCustomPlatformUrls((urls) => {
+      if (urls && Object.keys(urls).length > 0) {
+        try {
+          const current = JSON.parse(localStorage.getItem('syncrozz_custom_platform_urls_v1') || '{}');
+          localStorage.setItem('syncrozz_custom_platform_urls_v1', JSON.stringify({ ...current, ...urls }));
+        } catch {}
       }
     });
 
     return () => {
       unsubscribeOg();
       unsubscribePlatforms();
+      unsubscribeDeleted();
+      unsubscribeUrls();
     };
   }, []);
 

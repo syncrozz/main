@@ -1,5 +1,11 @@
 import { PlatformItem } from '../types';
 import { SYNCROZZ_OGI_OFFICIAL, SYNCROZZ_PRIMARY_LOGO } from '../data/syncrozzAssets';
+import { 
+  saveCustomPlatformUrlToFirestore, 
+  removeCustomPlatformUrlFromFirestore,
+  saveOgImageToFirestore,
+  removeOgImageFromFirestore
+} from '../services/firestoreService';
 
 const STORAGE_KEY = 'syncrozz_custom_og_images_v1';
 const PLATFORM_URLS_STORAGE_KEY = 'syncrozz_custom_platform_urls_v1';
@@ -23,6 +29,7 @@ export function saveCustomPlatformUrl(platformId: string, url: string): void {
     const current = getCustomPlatformUrls();
     current[platformId] = url;
     localStorage.setItem(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
+    saveCustomPlatformUrlToFirestore(platformId, url).catch(() => {});
   } catch (e) {
     console.error('Failed to save custom platform URL', e);
   }
@@ -33,6 +40,7 @@ export function removeCustomPlatformUrl(platformId: string): void {
     const current = getCustomPlatformUrls();
     delete current[platformId];
     localStorage.setItem(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
+    removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
   } catch (e) {
     console.error('Failed to remove custom platform URL', e);
   }

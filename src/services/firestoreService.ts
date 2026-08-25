@@ -151,3 +151,81 @@ export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void)
     return () => {};
   }
 }
+
+// 4. Custom Platform URLs Synchronization with Firestore
+export async function saveCustomPlatformUrlToFirestore(platformId: string, url: string, userEmail?: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'customPlatformUrls', platformId);
+    await setDoc(docRef, {
+      platformId,
+      url,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail || 'admin'
+    });
+  } catch (error) {
+    console.error('Error saving custom platform URL to Firestore:', error);
+  }
+}
+
+export async function removeCustomPlatformUrlFromFirestore(platformId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'customPlatformUrls', platformId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('Error deleting custom platform URL from Firestore:', error);
+  }
+}
+
+export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, string>) => void): () => void {
+  try {
+    const colRef = collection(db, 'customPlatformUrls');
+    return onSnapshot(colRef, (snapshot) => {
+      const result: Record<string, string> = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.platformId && data.url) {
+          result[data.platformId] = data.url;
+        }
+      });
+      callback(result);
+    }, (error) => {
+      console.warn('Firestore Custom URLs subscription error:', error);
+    });
+  } catch (e) {
+    console.warn('Could not subscribe to custom platform URLs:', e);
+    return () => {};
+  }
+}
+
+// 5. Deleted Default Platforms Synchronization
+export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], userEmail?: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'platformSettings', 'deletedDefaultPlatforms');
+    await setDoc(docRef, {
+      deletedIds: ids,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail || 'admin'
+    });
+  } catch (error) {
+    console.error('Error saving deleted default platforms to Firestore:', error);
+  }
+}
+
+export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => void): () => void {
+  try {
+    const docRef = doc(db, 'platformSettings', 'deletedDefaultPlatforms');
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        callback(data.deletedIds || []);
+      } else {
+        callback([]);
+      }
+    }, (error) => {
+      console.warn('Firestore Deleted Default Platforms subscription error:', error);
+    });
+  } catch (e) {
+    console.warn('Could not subscribe to deleted default platforms:', e);
+    return () => {};
+  }
+}
