@@ -9,6 +9,8 @@ import {
   Settings
 } from 'lucide-react';
 
+import { SYNCROZZ_PRIMARY_LOGO } from '../data/syncrozzAssets';
+
 interface NavbarProps {
   onExploreClick: () => void;
   onContactClick: () => void;
@@ -66,39 +68,38 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-white/90 backdrop-blur-md shadow-xs border-b border-slate-100 py-3.5' 
-          : 'bg-white/80 backdrop-blur-md border-b border-slate-100 py-4'
+          ? 'bg-white/90 backdrop-blur-md shadow-2xs border-b border-slate-100 py-2.5' 
+          : 'bg-white/80 backdrop-blur-md border-b border-slate-100 py-3'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           
           {/* Brand Logo */}
           <a 
             href="#home" 
             id="brand-logo-btn"
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-2.5 group cursor-pointer"
           >
-            {/* Signature SYNCROZZ Logo Badge */}
-            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0056D2] via-blue-600 to-sky-400 p-[2px] shadow-sm shadow-blue-500/20 transition-transform group-hover:scale-105">
-              <div className="w-full h-full bg-white rounded-[9px] flex items-center justify-center relative overflow-hidden">
-                <svg className="w-5 h-5 text-[#0056D2] relative z-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16.5 7.5C16.5 5.84315 15.1569 4.5 13.5 4.5H8.5C6.84315 4.5 5.5 5.84315 5.5 7.5C5.5 9.15685 6.84315 10.5 8.5 10.5H15.5C17.1569 10.5 18.5 11.8431 18.5 13.5C18.5 15.1569 17.1569 16.5 15.5 16.5H10.5C8.84315 16.5 7.5 15.1569 7.5 13.5" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="17" cy="6" r="1.5" fill="#38BDF8"/>
-                  <circle cx="7" cy="18" r="1.5" fill="#0056D2"/>
-                </svg>
-              </div>
+            {/* Official SYNCROZZ Logo Image */}
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-2xs shadow-blue-500/20 transition-transform group-hover:scale-105 shrink-0 bg-white">
+              <img 
+                src={SYNCROZZ_PRIMARY_LOGO} 
+                alt="SYNCROZZ" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
             
             <div className="flex flex-col">
-              <span className="text-2xl font-black tracking-tight text-[#0056D2] flex items-center gap-1 font-sans">
+              <span className="text-xl font-black tracking-tight text-[#0056D2] flex items-center gap-1 font-sans">
                 SYNCROZZ
               </span>
             </div>
           </a>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center space-x-5 text-xs font-semibold">
             {navLinks.map((link) => {
               const isActive = activeSection === link.id;
               return (
@@ -109,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={(e) => handleNavClick(e, link.href)}
                   className={`transition-colors duration-150 ${
                     isActive
-                      ? 'text-[#0056D2] font-semibold'
+                      ? 'text-[#0056D2] font-bold'
                       : 'text-slate-600 hover:text-[#0056D2]'
                   }`}
                 >
@@ -120,25 +121,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5">
             {/* Admin Panel Button */}
             {onAdminClick && (
               <button
                 id="header-admin-portal-btn"
                 onClick={onAdminClick}
                 title="Akses Pentadbir (Google OAuth 2.0 Master Admin)"
-                className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-[#0056D2] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                className="px-2.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-[#0056D2] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 aria-label="Akses Admin"
               >
                 <Settings className="w-3.5 h-3.5 text-[#0056D2]" />
-                <span>Admin Access</span>
+                <span>Admin</span>
               </button>
             )}
 
             <button
               id="header-explore-btn"
               onClick={onExploreClick}
-              className="bg-[#0056D2] text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-colors shadow-sm shadow-blue-200 cursor-pointer"
+              className="bg-[#0056D2] text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-blue-700 active:scale-95 transition-colors shadow-2xs shadow-blue-200 cursor-pointer"
             >
               Explore Platform
             </button>

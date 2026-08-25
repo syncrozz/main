@@ -37,48 +37,48 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({ onContactClick }
   const estimatedAccuracyRate = 99.8;
 
   return (
-    <section id="kos" className="py-16 md:py-24 bg-white relative border-t border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
+    <section id="kos" className="py-10 md:py-14 bg-white relative border-t border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-2">
-          <span className="text-[11px] font-bold tracking-[0.2em] text-[#0056D2] uppercase bg-blue-50 px-3 py-1 rounded-full inline-block">
+        <div className="text-center max-w-3xl mx-auto mb-8 space-y-1">
+          <span className="text-[10px] font-bold tracking-[0.18em] text-[#0056D2] uppercase bg-blue-50 px-2.5 py-0.5 rounded-full inline-block">
             Penilaian Nilai & Kos
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Kira Penjimatan Masa & Kecekapan Organisasi Anda
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 font-normal">
-            Platform SYNCROZZ direka untuk memaksimumkan pulangan nilai melalui automasi tugas harian dan penjimatan kos operasi pengurusan.
+          <p className="text-xs sm:text-sm text-slate-500 font-normal">
+            Platform SYNCROZZ direka untuk memaksimumkan pulangan nilai melalui automasi tugas harian.
           </p>
         </div>
 
         {/* Interactive Calculator Container */}
-        <div className="bg-slate-50/70 rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-xs max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-6 lg:p-7 border border-slate-100 shadow-2xs max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Left: Input Selection Controls */}
-            <div className="lg:col-span-7 space-y-6 text-left">
+            <div className="lg:col-span-7 space-y-4 text-left">
               
               {/* Step 1: Organisation Type */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                   1. Jenis Organisasi / Institusi:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {[
                     { id: 'school', label: 'Sekolah' },
                     { id: 'college', label: 'Kolej / IPT' },
-                    { id: 'community', label: 'Komuniti / Kelab' },
+                    { id: 'community', label: 'Komuniti' },
                     { id: 'enterprise', label: 'Agensi / Swasta' }
                   ].map((type) => (
                     <button
                       key={type.id}
                       type="button"
                       onClick={() => setOrgType(type.id as any)}
-                      className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                         orgType === type.id
-                          ? 'bg-[#0056D2] text-white border-[#0056D2] shadow-xs'
+                          ? 'bg-[#0056D2] text-white border-[#0056D2] shadow-2xs'
                           : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -89,12 +89,12 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({ onContactClick }
               </div>
 
               {/* Step 2: User Volume Slider */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    2. Anggaran Bilangan Warga / Pengguna:
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    2. Anggaran Bilangan Pengguna:
                   </label>
-                  <span className="text-sm font-bold text-[#0056D2] font-mono bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+                  <span className="text-xs font-bold text-[#0056D2] font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                     {userCount} Orang
                   </span>
                 </div>
@@ -105,22 +105,22 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({ onContactClick }
                   step="10"
                   value={userCount}
                   onChange={(e) => setUserCount(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0056D2]"
+                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0056D2]"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
                   <span>20 Warga</span>
                   <span>500</span>
                   <span>1,500</span>
-                  <span>2,500+ Warga</span>
+                  <span>2,500+</span>
                 </div>
               </div>
 
               {/* Step 3: Modules Needed */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  3. Pilih Modul Yang Diperlukan:
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  3. Pilih Modul Diperlukan:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { id: 'staff-attend', name: 'Staff Attend', desc: 'Kehadiran staf pantas' },
                     { id: 'student-attend', name: 'Student Attend', desc: 'Kehadiran murid berpusat' },
@@ -134,20 +134,20 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({ onContactClick }
                       <div
                         key={mod.id}
                         onClick={() => toggleModule(mod.id)}
-                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${
                           isSelected
-                            ? 'bg-white border-[#0056D2] shadow-xs ring-1 ring-blue-500/20'
+                            ? 'bg-white border-[#0056D2] shadow-2xs ring-1 ring-blue-500/20'
                             : 'bg-white/70 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div>
                           <div className="text-xs font-bold text-slate-900">{mod.name}</div>
-                          <div className="text-[11px] text-slate-500">{mod.desc}</div>
+                          <div className="text-[10px] text-slate-500">{mod.desc}</div>
                         </div>
-                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                        <div className={`w-4 h-4 rounded flex items-center justify-center border ${
                           isSelected ? 'bg-[#0056D2] border-[#0056D2] text-white' : 'border-slate-300'
                         }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5" />}
+                          {isSelected && <Check className="w-3 h-3" />}
                         </div>
                       </div>
                     );
@@ -158,74 +158,74 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({ onContactClick }
             </div>
 
             {/* Right: Projected Value Summary Box */}
-            <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-6 text-left">
+            <div className="lg:col-span-5 bg-white rounded-xl p-4 sm:p-5 border border-slate-100 shadow-2xs space-y-4 text-left">
               <div>
-                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">
+                <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">
                   <Sparkles className="w-3 h-3" />
-                  Unjuran Manfaat Digital
+                  Unjuran Manfaat
                 </div>
-                <h3 className="text-base font-bold text-slate-900 mt-1">
+                <h3 className="text-sm font-bold text-slate-900 mt-1">
                   Ringkasan Nilai Operasi
                 </h3>
               </div>
 
               {/* Metrics Highlights */}
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100/80 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#0056D2] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Clock className="w-5 h-5" />
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100/80 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[#0056D2] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-[#0056D2]">
+                    <div className="text-sm sm:text-base font-bold text-[#0056D2]">
                       ~{estimatedHoursSavedWeekly} Jam / Minggu
                     </div>
-                    <div className="text-xs text-slate-500 font-medium">
-                      Penjimatan masa kerja manual & pengesanan rekod
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Penjimatan masa kerja manual
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Leaf className="w-5 h-5" />
+                <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Leaf className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-emerald-900">
+                    <div className="text-sm sm:text-base font-bold text-emerald-900">
                       ~{estimatedSheetsPaperSavedMonthly.toLocaleString()} Helaian / Bulan
                     </div>
-                    <div className="text-xs text-emerald-700 font-medium">
-                      Penjimatan kertas fizikal ke arah digital hijau
+                    <div className="text-[10px] text-emerald-700 font-medium">
+                      Penjimatan kertas fizikal
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <ShieldCheck className="w-5 h-5" />
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-slate-900">
+                    <div className="text-sm sm:text-base font-bold text-slate-900">
                       {estimatedAccuracyRate}% Ketepatan Rekod
                     </div>
-                    <div className="text-xs text-slate-500 font-medium">
-                      Sifar ralat keciciran atau kelewatan dokumentasi
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Sifar ralat keciciran dokumentasi
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Button */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   id="calc-quote-btn"
                   onClick={onContactClick}
-                  className="w-full py-3.5 px-4 rounded-xl text-center font-bold text-white bg-[#0056D2] hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+                  className="w-full py-2.5 px-3.5 rounded-lg text-center font-bold text-white bg-[#0056D2] hover:bg-blue-700 shadow-2xs shadow-blue-200 transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
                 >
                   <span>Dapatkan Pelan & Konsultasi</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-                <p className="text-[11px] text-center text-slate-400 mt-2">
-                  Penyesuaian percuma mengikut spesifikasi institusi anda.
+                <p className="text-[10px] text-center text-slate-400 mt-1.5">
+                  Penyesuaian mengikut spesifikasi institusi anda.
                 </p>
               </div>
 

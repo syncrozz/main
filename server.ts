@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 
-const MASTER_ADMIN_EMAILS = ['khaikerr@gmail.com', 'cikgukyee@gmail.com'];
+const MASTER_ADMIN_EMAILS = ['khaikerr@gmail.com'];
 const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
 
 const app = express();

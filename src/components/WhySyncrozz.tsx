@@ -27,57 +27,57 @@ export const WhySyncrozz: React.FC = () => {
   };
 
   return (
-    <section id="about" className="py-16 md:py-24 bg-white relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
+    <section id="about" className="py-10 md:py-14 bg-white relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-2">
-          <span className="text-[11px] font-bold tracking-[0.2em] text-[#0056D2] uppercase bg-blue-50 px-3 py-1 rounded-full inline-block">
+        <div className="text-center max-w-3xl mx-auto mb-8 space-y-1">
+          <span className="text-[10px] font-bold tracking-[0.18em] text-[#0056D2] uppercase bg-blue-50 px-2.5 py-0.5 rounded-full inline-block">
             Mengapa SYNCROZZ
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Teknologi Yang Dibina Untuk Memudahkan
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 font-normal">
-            Kami percaya bahawa teknologi terbaik adalah teknologi yang tidak membebankan pengguna, menyelesaikan masalah sebenar, dan bersedia berkembang bersama anda.
+          <p className="text-xs sm:text-sm text-slate-500 font-normal">
+            Penyelesaian digital yang praktikal, tidak membebankan, dan bersedia berkembang bersama anda.
           </p>
         </div>
 
         {/* 4 Core Principles Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {WHY_SYNCROZZ_PRINCIPLES.map((principle, index) => (
             <div
               key={principle.title}
               id={`principle-card-${principle.title.toLowerCase()}`}
-              className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all duration-200 flex flex-col justify-between group text-left"
+              className="bg-white rounded-xl p-4 sm:p-5 border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all duration-200 flex flex-col justify-between group text-left"
             >
               <div>
                 {/* Number & Icon */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0056D2] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#0056D2] flex items-center justify-center group-hover:scale-105 transition-transform">
                     {getIcon(principle.icon)}
                   </div>
-                  <span className="text-xl font-bold text-slate-200 group-hover:text-blue-100 transition-colors font-mono">
+                  <span className="text-base font-bold text-slate-200 group-hover:text-blue-100 transition-colors font-mono">
                     0{index + 1}
                   </span>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-[#0056D2] transition-colors">
+                <h3 className="text-base font-bold text-slate-900 mb-0.5 group-hover:text-[#0056D2] transition-colors">
                   {principle.title}
                 </h3>
-                <div className="text-xs font-semibold text-[#0056D2] mb-2.5">
+                <div className="text-xs font-semibold text-[#0056D2] mb-2">
                   {principle.subtitle}
                 </div>
 
                 {/* Description */}
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal mb-4">
+                <p className="text-xs text-slate-500 leading-relaxed font-normal mb-3">
                   {principle.description}
                 </p>
               </div>
 
               {/* Bottom Micro Highlight */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+              <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-semibold text-slate-500">
                 <span className="text-[#0056D2] bg-blue-50 px-2 py-0.5 rounded-md">
                   {principle.highlight}
                 </span>

@@ -6,23 +6,30 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Master Admin Helper: strictly locked to khaikerr@gmail.com
+    function isMasterAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.email.lower() == 'khaikerr@gmail.com';
+    }
+
     // Public read-only access for platform OG images so all visitors see the cards
     match /platformOgImages/{imageId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isMasterAdmin() || isAuthenticated();
     }
 
-    // Admins collection
+    // Admins collection - strictly restricted to Master Admin khaikerr@gmail.com
     match /admins/{adminId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isMasterAdmin();
+      allow write: if isMasterAdmin();
     }
 
     // Audit logs collection
     match /auditLogs/{logId} {
-      allow read: if isAuthenticated();
+      allow read: if isMasterAdmin();
       allow create: if true; // allow logging events
-      allow update, delete: if isAuthenticated();
+      allow update, delete: if isMasterAdmin();
     }
   }
 }
+

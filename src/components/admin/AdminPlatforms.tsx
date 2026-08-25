@@ -10,11 +10,14 @@ import {
   Code,
   Sparkles,
   RefreshCw,
-  Copy
+  Copy,
+  Info,
+  CheckCircle2
 } from 'lucide-react';
 import { PLATFORMS_DATA } from '../../data/platforms';
 import { PlatformItem } from '../../types';
-import { generateDefaultOgImage } from '../../utils/ogStorage';
+import { generateDefaultOgImage, getOfficialMasterOgImage } from '../../utils/ogStorage';
+import { SYNCROZZ_OGI_OFFICIAL } from '../../data/syncrozzAssets';
 import { useAuth } from '../../auth/AuthContext';
 
 interface AdminPlatformsProps {
@@ -49,15 +52,22 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     }
   };
 
+  const handleApplyOfficialMaster = (platformId: string) => {
+    onSaveOgImage(platformId, SYNCROZZ_OGI_OFFICIAL.rawUrl);
+  };
+
   const handleCopyMetaTags = () => {
-    const metaSnippet = `<!-- Open Graph Metadata for ${selectedPlatform.name} -->
+    const imgUrl = currentCustomImage || SYNCROZZ_OGI_OFFICIAL.rawUrl;
+    const metaSnippet = `<!-- SYNCROZZ Open Graph Metadata (1200x630 px) -->
 <meta property="og:title" content="${selectedPlatform.name} — ${selectedPlatform.tagline}" />
 <meta property="og:description" content="${selectedPlatform.description}" />
-<meta property="og:image" content="${window.location.origin}/og/${selectedPlatform.id}.jpg" />
+<meta property="og:image" content="${imgUrl}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:type" content="image/jpeg" />
 <meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary_large_image" />`;
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="${imgUrl}" />`;
 
     navigator.clipboard?.writeText?.(metaSnippet);
     setCopiedCode(true);
@@ -67,24 +77,66 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Header */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-xl font-extrabold text-slate-900">
-              Pengurusan Open Graph Images (JPG)
+      {/* Official Master OGI Reference Banner */}
+      <div className="bg-white rounded-2xl p-6 border border-blue-200 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-[#0056D2] uppercase tracking-wider">
+                Direct Visual Reference
+              </span>
+              <span className="text-xs font-mono text-slate-500 font-bold">
+                1200 × 630 px • JPG
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+              Rujukan Visual Utama: SYNCROZZ OGI.MAINv2.jpg
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-              1200 × 630 Standard
-            </span>
+            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
+              Mematuhi sistem visual rasmi: <strong>White / Light / Modern / Clean / Premium Corporate</strong>, komposisi asimetri kiri-kanan (maklumat di kiri, ilustrasi ekosistem teknologi di kanan) dengan palet <strong>SYNCROZZ Blue + dark navy + white</strong>.
+            </p>
           </div>
-          <p className="text-xs text-slate-500">
-            Muat naik dan selaraskan visual Open Graph (JPG) untuk setiap modul platform bagi paparan perkongsian media sosial (Facebook, WhatsApp, Twitter/X, LinkedIn).
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href={SYNCROZZ_OGI_OFFICIAL.blobUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+            >
+              <span>GitHub OGI.MAINv2.jpg</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            <button
+              onClick={() => handleApplyOfficialMaster(selectedPlatform.id)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#0056D2] hover:bg-blue-700 shadow-sm transition-all cursor-pointer active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Gunakan OGI.MAINv2 untuk {selectedPlatform.name}</span>
+            </button>
+          </div>
         </div>
 
-        <div className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-          {Object.keys(customOgImages).length} / {PLATFORMS_DATA.length} Kustom JPG Aktif
+        {/* Master OGI Visual Thumbnail Bar */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-48 aspect-[1200/630] rounded-lg overflow-hidden border border-slate-300 bg-slate-900 shrink-0 shadow-2xs">
+            <img 
+              src={SYNCROZZ_OGI_OFFICIAL.rawUrl}
+              alt="SYNCROZZ Master OGI Reference"
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="flex-1 text-xs text-slate-600 space-y-1">
+            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Piawaian Identiti Digital SYNCROZZ Terkunci</span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Direct Reference: <code className="text-blue-700 font-mono text-[10px] break-all">{SYNCROZZ_OGI_OFFICIAL.rawUrl}</code>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -93,9 +145,14 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
         
         {/* Left Column: Platform Selector List */}
         <div className="lg:col-span-5 space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
-            Pilih Modul Platform
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Pilih Modul Platform ({PLATFORMS_DATA.length})
+            </h3>
+            <span className="text-[11px] text-blue-600 font-bold">
+              {Object.keys(customOgImages).length} Kustom
+            </span>
+          </div>
 
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
             {PLATFORMS_DATA.map((plat) => {
@@ -129,11 +186,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                   <div className="flex items-center gap-2 shrink-0">
                     {hasCustom ? (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        JPG Kustom
+                        JPG Aktif
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600">
-                        Visual Asal
+                        Light Template
                       </span>
                     )}
                   </div>
@@ -154,7 +211,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                   {selectedPlatform.category}
                 </span>
                 <h3 className="text-lg font-extrabold text-slate-900">
-                  {selectedPlatform.name}
+                  {selectedPlatform.name} {selectedPlatform.subName || ''}
                 </h3>
               </div>
 
@@ -195,7 +252,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                 </span>
               </div>
 
-              <div className="rounded-xl overflow-hidden border border-slate-300 shadow-md bg-slate-950 relative aspect-[1200/630]">
+              <div className="rounded-xl overflow-hidden border border-slate-300 shadow-md bg-white relative aspect-[1200/630]">
                 <img
                   src={activeImage}
                   alt={`Open Graph Preview for ${selectedPlatform.name}`}
@@ -203,7 +260,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono">
-                  {currentCustomImage ? 'Custom File (JPG)' : 'Generated Vector Fallback'}
+                  {currentCustomImage ? 'JPG Custom / Master' : '1200x630 SVG Template'}
                 </div>
               </div>
             </div>
@@ -212,8 +269,8 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <Code className="w-3.5 h-3.5 text-purple-600" />
-                  <span>HTML Open Graph Meta Tags</span>
+                  <Code className="w-3.5 h-3.5 text-[#0056D2]" />
+                  <span>HTML Open Graph Meta Tags (1200 × 630 px)</span>
                 </span>
 
                 <button
@@ -237,8 +294,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
               <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg text-[11px] font-mono overflow-x-auto leading-relaxed">
 {`<meta property="og:title" content="${selectedPlatform.name} — ${selectedPlatform.tagline}" />
 <meta property="og:description" content="${selectedPlatform.description}" />
-<meta property="og:image" content="${selectedPlatform.id}-og.jpg" />
-<meta property="og:type" content="website" />`}
+<meta property="og:image" content="${currentCustomImage || SYNCROZZ_OGI_OFFICIAL.rawUrl}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />`}
               </pre>
             </div>
 
@@ -250,3 +310,4 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     </div>
   );
 };
+

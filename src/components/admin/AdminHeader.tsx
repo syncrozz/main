@@ -12,6 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
+import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
 
 export type AdminTab = 'overview' | 'platforms' | 'users' | 'settings' | 'logs';
 
@@ -49,8 +50,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           
           {/* Brand & Greeting */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0056D2] text-white flex items-center justify-center font-black shadow-md shadow-blue-500/20">
-              <Shield className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-blue-500/20 shrink-0 bg-white p-0.5 border border-slate-100">
+              <img 
+                src={SYNCROZZ_PRIMARY_LOGO} 
+                alt="SYNCROZZ" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
 
             <div>

@@ -58,28 +58,28 @@ export const TrustStrip: React.FC = () => {
   };
 
   return (
-    <section className="relative z-20 border-y border-slate-100 bg-slate-50/40 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
+    <section className="relative z-20 border-y border-slate-100 bg-slate-50/40 py-4 sm:py-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* 4 Value Pillars Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-6">
           {TRUST_BENEFITS.map((benefit) => {
             return (
               <div 
                 key={benefit.id} 
-                className="flex items-center gap-3.5 group"
+                className="flex items-center gap-2.5 group"
               >
                 {/* Icon Box */}
-                <div className="w-10 h-10 bg-white rounded-xl shadow-xs border border-slate-200/80 flex items-center justify-center shrink-0 text-[#0056D2] group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-lg shadow-2xs border border-slate-200/80 flex items-center justify-center shrink-0 text-[#0056D2] group-hover:scale-105 transition-transform">
                   {getIcon(benefit.iconName)}
                 </div>
 
                 {/* Content */}
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#0056D2] transition-colors">
+                <div className="space-y-0.5 text-left">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#0056D2] transition-colors leading-snug">
                     {benefit.title}
                   </h4>
-                  <p className="text-[11px] text-slate-500 font-normal leading-relaxed">
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal leading-tight line-clamp-1 sm:line-clamp-none">
                     {benefit.description}
                   </p>
                 </div>

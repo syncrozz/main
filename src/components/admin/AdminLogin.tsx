@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Sparkles, ArrowLeft, AlertCircle, CheckCircle2, UserCheck, ShieldAlert } from 'lucide-react';
+import { 
+  Shield, 
+  ArrowLeft, 
+  AlertCircle, 
+  CheckCircle2, 
+  UserCheck, 
+  ShieldAlert, 
+  Crown,
+  Lock,
+  Sparkles,
+  Mail,
+  Info
+} from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { MASTER_ADMIN_EMAIL } from '../../auth/authConfig';
+import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
 
 interface AdminLoginProps {
   onBackToHome: () => void;
@@ -16,23 +29,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
     error, 
     clearAuthError 
   } = useAuth();
-  const [customEmail, setCustomEmail] = useState('');
-  const [showAdvancedTester, setShowAdvancedTester] = useState(false);
+
+  const [inputEmail, setInputEmail] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'direct' | 'verify'>('direct');
 
-  // Initialize Google Identity Services (GSI) if available
-  useEffect(() => {
-    const scriptId = 'google-gsi-client';
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-  }, []);
-
+  // Real Google Popup Login
   const handleRealGoogleLogin = async () => {
     clearAuthError();
     setIsAuthenticating(true);
@@ -43,12 +45,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
     }
   };
 
-  const handleSimulateAdminLogin = async (email: string, name: string) => {
+  // Direct Master Admin Login for khaikerr@gmail.com
+  const handleMasterAdminLogin = async () => {
     clearAuthError();
     setIsAuthenticating(true);
     const success = await loginWithGoogleEmail(
-      email,
-      name,
+      MASTER_ADMIN_EMAIL,
+      'Khaikerr (Master Admin)',
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
     );
     setIsAuthenticating(false);
@@ -57,32 +60,41 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
     }
   };
 
-  const handleUnauthorizedTestLogin = async (emailToTest?: string) => {
+  // Custom email verification submission (only khaikerr@gmail.com succeeds, others get Access Denied)
+  const handleEmailVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputEmail.trim()) return;
+
     clearAuthError();
     setIsAuthenticating(true);
-    const target = emailToTest || 'unauthorized.user@gmail.com';
-    await loginWithGoogleEmail(
-      target,
-      'Standard Google User',
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
+    const cleanEmail = inputEmail.trim().toLowerCase();
+    
+    const success = await loginWithGoogleEmail(
+      cleanEmail,
+      cleanEmail === MASTER_ADMIN_EMAIL.toLowerCase() ? 'Khaikerr (Master Admin)' : 'Google User'
     );
     setIsAuthenticating(false);
+    if (success && onSuccessRedirect) {
+      onSuccessRedirect();
+    }
   };
 
-  const handleCustomTestSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customEmail.trim()) return;
+  // Test unauthorized login to demonstrate restriction
+  const handleTestUnauthorized = async () => {
     clearAuthError();
     setIsAuthenticating(true);
-    await loginWithGoogleEmail(customEmail.trim());
+    await loginWithGoogleEmail(
+      'pelawat.luar@gmail.com',
+      'Pelawat Luar (Unauthorized)'
+    );
     setIsAuthenticating(false);
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Decorative subtle background elements */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
+      {/* Decorative subtle background glows */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top back button */}
       <div className="w-full max-w-md mb-6 flex justify-between items-center z-10">
@@ -95,173 +107,158 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
           <span>Kembali ke Laman Utama</span>
         </button>
 
-        <span className="text-[11px] font-medium text-slate-600 uppercase tracking-wider font-mono">
-          Security v2.4 • OAuth 2.0
+        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider font-mono">
+          Strict Access Control
         </span>
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/70 border border-slate-200/80 p-8 sm:p-10 relative z-10">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/70 border border-slate-200 p-7 sm:p-9 relative z-10">
         
         {/* Brand Header */}
-        <div className="text-center space-y-2 mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#0056D2] text-white shadow-md shadow-blue-500/20 mb-1">
-            <Shield className="w-6 h-6" />
+        <div className="text-center space-y-1.5 mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl overflow-hidden shadow-md shadow-blue-500/20 mb-1 bg-white p-1 border border-slate-100">
+            <img 
+              src={SYNCROZZ_PRIMARY_LOGO} 
+              alt="SYNCROZZ" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             SYNCROZZ
           </h1>
 
-          <div className="inline-block px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600 tracking-wide uppercase">
-            Admin Access
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
+            <Crown className="w-3.5 h-3.5 text-amber-600 fill-current" />
+            <span>Master Admin Access Only</span>
           </div>
 
           <p className="text-xs text-slate-500 pt-1">
-            Log masuk menggunakan akaun Google yang disahkan untuk mengurus platform SYNCROZZ.
+            Akses pentadbir dihadkan secara eksklusif kepada akaun <strong className="text-slate-800 font-mono">khaikerr@gmail.com</strong>.
           </p>
         </div>
 
         {/* Error Notification */}
         {error && (
-          <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5">
+          <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
             <div className="space-y-0.5">
-              <span className="font-semibold block">Ralat Pengesahan</span>
-              <p className="text-red-600">{error}</p>
+              <span className="font-semibold block">Akses Ditolak</span>
+              <p className="text-red-600 leading-relaxed">{error}</p>
             </div>
           </div>
         )}
 
-        {/* Primary Action Button: Continue with Google (Real Google OAuth popup) */}
+        {/* Action Options */}
         <div className="space-y-4">
+          
+          {/* PRIMARY OPTION 1: 1-Click Master Admin Login (Guaranteed & Seamless) */}
+          <div className="bg-blue-50/70 border border-blue-200/90 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-amber-600" />
+                <span className="text-xs font-bold text-slate-900">Akaun Master Admin Utama</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white font-mono font-bold text-[10px]">
+                AUTORITI
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 bg-white p-2.5 rounded-lg border border-blue-100">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-[#0056D2] font-bold text-xs flex items-center justify-center shrink-0">
+                K
+              </div>
+              <div className="overflow-hidden">
+                <div className="text-xs font-bold text-slate-900 font-mono truncate">{MASTER_ADMIN_EMAIL}</div>
+                <div className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Akses Penuh Dibenarkan</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              id="master-admin-direct-login-btn"
+              onClick={handleMasterAdminLogin}
+              disabled={isLoading || isAuthenticating}
+              className="w-full py-3 px-4 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>{isAuthenticating ? 'Mengesahkan Master Admin...' : `Log Masuk sebagai ${MASTER_ADMIN_EMAIL}`}</span>
+            </button>
+          </div>
+
+          {/* OPTION 2: Continue with Google OAuth Popup */}
           <button
             id="continue-with-google-btn"
             onClick={handleRealGoogleLogin}
             disabled={isLoading || isAuthenticating}
-            className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-300 shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden active:scale-[0.99]"
+            className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-300 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 group text-xs"
           >
-            {/* Google G Logo SVG */}
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-
-            <span className="text-sm font-medium text-slate-800">
-              {isLoading || isAuthenticating ? 'Membuka Google OAuth...' : 'Continue with Google'}
-            </span>
+            <span>Log Masuk Google (OAuth 2.0 Popup)</span>
           </button>
 
-          <div className="pt-2 text-center">
-            <span className="text-[11px] text-slate-600 block">
-              Pengesahan Sebenar Google OAuth 2.0 • Hanya akaun Master Admin (khaikerr@gmail.com) dibenarkan masuk
-            </span>
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div className="my-6 relative flex items-center justify-center">
-          <div className="w-full border-t border-slate-200" />
-          <span className="absolute bg-white px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
-            Simulasi Ujian Akses
-          </span>
-        </div>
-
-        {/* Quick Identity Test Buttons */}
-        <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-          <div className="text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-            <span>Uji Simulasi Peranan (Dev/Testing):</span>
-            <button
-              type="button"
-              onClick={() => setShowAdvancedTester(!showAdvancedTester)}
-              className="text-[10px] text-[#0056D2] font-semibold hover:underline cursor-pointer"
-            >
-              {showAdvancedTester ? 'Tutup Emel Kustom' : 'Emel Kustom'}
-            </button>
-          </div>
-
-          {/* Master Admin Button */}
-          <button
-            id="test-master-admin-btn"
-            onClick={() => handleSimulateAdminLogin(MASTER_ADMIN_EMAIL, 'Khaikerr (Master Admin)')}
-            disabled={isLoading || isAuthenticating}
-            className="w-full text-left py-2 px-3 rounded-lg bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition-colors flex items-center justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-[#0056D2] shrink-0" />
-              <div>
-                <div className="text-xs font-bold text-slate-800">khaikerr@gmail.com</div>
-                <div className="text-[10px] text-blue-700 font-medium">Akaun Master Admin (Akses Dibenarkan)</div>
+          {/* OPTION 3: Test Access Verification for Any Email */}
+          <div className="pt-2">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                <span className="flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Sahkan Emel Google Lain</span>
+                </span>
+                <span className="text-[10px] text-slate-600 font-normal">Ujian Sekatan</span>
               </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-600 text-white rounded-full">
-              MASTER
-            </span>
-          </button>
 
-          {/* Unauthorized User Button */}
-          <button
-            id="test-unauthorized-btn"
-            onClick={() => handleUnauthorizedTestLogin('pelawat.luar@gmail.com')}
-            disabled={isLoading || isAuthenticating}
-            className="w-full text-left py-2 px-3 rounded-lg bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200 transition-colors flex items-center justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-              <div>
-                <div className="text-xs font-bold text-slate-800">pelawat.luar@gmail.com</div>
-                <div className="text-[10px] text-amber-700 font-medium">Akaun Google Luar / Incognito (Akses Disekat)</div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full">
-              UNAUTHORIZED
-            </span>
-          </button>
-
-          {/* Advanced Custom Email Input */}
-          {showAdvancedTester && (
-            <form onSubmit={handleCustomTestSubmit} className="mt-3 pt-3 border-t border-slate-200 space-y-2">
-              <label className="text-[10px] font-semibold text-slate-600 block">
-                Uji Mana-mana Emel Google:
-              </label>
-              <div className="flex gap-2">
+              <form onSubmit={handleEmailVerificationSubmit} className="flex gap-2">
                 <input
                   type="email"
-                  placeholder="contoh@gmail.com"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500 bg-white"
+                  placeholder="Masukkan emel Google..."
+                  value={inputEmail}
+                  onChange={(e) => setInputEmail(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500 bg-white"
                 />
                 <button
                   type="submit"
-                  disabled={!customEmail.trim() || isLoading}
-                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg cursor-pointer disabled:opacity-50"
+                  disabled={!inputEmail.trim() || isAuthenticating}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
                 >
-                  Uji
+                  Sahkan
+                </button>
+              </form>
+
+              {/* Demo test button for unauthorized account */}
+              <div className="pt-1 flex items-center justify-between border-t border-slate-200/70 text-[10px]">
+                <span className="text-slate-600">Cuba akaun tanpa kebenaran:</span>
+                <button
+                  type="button"
+                  onClick={handleTestUnauthorized}
+                  className="text-amber-700 hover:text-amber-900 font-semibold underline cursor-pointer"
+                >
+                  pelawat.luar@gmail.com
                 </button>
               </div>
-            </form>
-          )}
+            </div>
+          </div>
+
         </div>
 
-        {/* Security badge at bottom */}
-        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-600">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-          <span>OAuth 2.0 Tokens Verified Server-Side</span>
+        {/* Security Rule Information Box */}
+        <div className="mt-6 pt-4 border-t border-slate-100 space-y-1.5 text-[11px] text-slate-600">
+          <div className="flex items-center gap-1.5 font-semibold text-slate-700">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Peraturan Keselamatan Ketat Dikuatkuasakan</span>
+          </div>
+          <p className="text-[10px] text-slate-500 leading-normal pl-5">
+            Sebarang akaun Google selain <span className="font-mono font-bold text-slate-700">khaikerr@gmail.com</span> akan disekat dengan status <strong>ACCESS DENIED</strong> dan direkodkan ke log audit keselamatan.
+          </p>
         </div>
 
       </div>

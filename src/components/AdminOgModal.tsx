@@ -13,11 +13,13 @@ import {
   AlertCircle,
   FileCheck,
   RefreshCw,
-  Copy
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem } from '../types';
-import { generateDefaultOgImage } from '../utils/ogStorage';
+import { generateDefaultOgImage, getOfficialMasterOgImage } from '../utils/ogStorage';
+import { SYNCROZZ_OGI_OFFICIAL } from '../data/syncrozzAssets';
 
 interface AdminOgModalProps {
   isOpen: boolean;
@@ -71,6 +73,11 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleApplyOfficialMaster = () => {
+    onSaveOgImage(currentPlatform.id, SYNCROZZ_OGI_OFFICIAL.rawUrl);
+    showNotification(`Visual rasmi OGI.MAINv2.jpg diterapkan untuk ${currentPlatform.name}!`);
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -91,12 +98,13 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
   };
 
   const handleCopyMetaTag = () => {
-    const metaTag = `<meta property="og:image" content="https://syncrozz.com/og/${currentPlatform.id}.jpg" />\n<meta property="og:image:width" content="1200" />\n<meta property="og:image:height" content="630" />\n<meta property="og:image:type" content="image/jpeg" />`;
+    const metaTag = `<meta property="og:image" content="${customImage || SYNCROZZ_OGI_OFFICIAL.rawUrl}" />\n<meta property="og:image:width" content="1200" />\n<meta property="og:image:height" content="630" />\n<meta property="og:image:type" content="image/jpeg" />`;
     navigator.clipboard.writeText(metaTag);
     setCopiedId('meta');
     setTimeout(() => setCopiedId(null), 2000);
     showNotification('Meta Tag HTML Open Graph disalin!');
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -249,23 +257,52 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
                   <ImageIcon className="w-4 h-4 text-[#0056D2]" />
                   Open Graph Image (1200 × 630 px • Nisbah 1.91:1)
                 </span>
-                <span className="font-mono text-[11px] text-slate-400">
-                  {customImage ? 'Fail JPG Tersuai Pengguna' : 'Templat SVG Bawaan Rasmi'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleApplyOfficialMaster}
+                    className="text-[11px] font-bold text-[#0056D2] hover:text-blue-700 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Gunakan OGI.MAINv2.jpg</span>
+                  </button>
+                  <span className="font-mono text-[11px] text-slate-400">
+                    {customImage ? 'Fail JPG Tersuai' : 'White / Light SVG Default'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Direct Reference Info Callout */}
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-[#0056D2] shrink-0" />
+                  <span className="text-slate-700 truncate">
+                    Rujukan Visual Rasmi: <strong>OGI.MAINv2.jpg</strong> (White/Corporate Asymmetrical)
+                  </span>
+                </div>
+                <a
+                  href={SYNCROZZ_OGI_OFFICIAL.blobUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-700 font-bold hover:underline shrink-0 flex items-center gap-1 text-[11px]"
+                >
+                  <span>Lihat di GitHub</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
 
               {/* Card Preview Container */}
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-md group aspect-[1200/630]">
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md group aspect-[1200/630]">
                 <img
                   src={activeOgImage}
                   alt={`Open Graph Preview ${currentPlatform.name}`}
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
 
                 {/* Overlay Badge */}
                 <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white flex items-center gap-1.5 border border-white/20">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>OG IMAGE PREVIEW</span>
+                  <span>OG IMAGE PREVIEW (1200 × 630)</span>
                 </div>
 
                 <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-300 border border-white/20">
@@ -273,6 +310,7 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
                 </div>
               </div>
             </div>
+
 
             {/* Upload Dropzone */}
             <div

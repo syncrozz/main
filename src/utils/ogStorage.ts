@@ -1,6 +1,11 @@
 import { PlatformItem } from '../types';
+import { SYNCROZZ_OGI_OFFICIAL, SYNCROZZ_PRIMARY_LOGO } from '../data/syncrozzAssets';
 
 const STORAGE_KEY = 'syncrozz_custom_og_images_v1';
+
+export function getOfficialMasterOgImage(): string {
+  return SYNCROZZ_OGI_OFFICIAL.rawUrl;
+}
 
 export function getCustomOgImages(): Record<string, string> {
   try {
@@ -32,7 +37,15 @@ export function removeCustomOgImage(platformId: string): void {
   }
 }
 
-// Generate a high quality default 1200x630 Open Graph card SVG data URI for any platform
+/**
+ * Generate a high quality 1200x630 Open Graph card SVG data URI
+ * Design Language: White / Light / Modern / Clean / Premium Corporate
+ * Direct Visual Continuity with OGI.MAINv2.jpg:
+ * - Asymmetrical left-right composition
+ * - Left: Strong typography hierarchy, category pill, title, tagline, description, domain badge
+ * - Right: Technology / dashboard / hero device visual mockup with layered translucent circles & soft shadows
+ * - Palette: SYNCROZZ Blue (#0056D2) + Dark Navy (#0F172A) + Clean White (#FFFFFF) + Ice Blue (#EFF6FF)
+ */
 export function generateDefaultOgImage(item: PlatformItem): string {
   const fullName = `${item.name} ${item.subName || ''}`.trim();
   const category = item.category.toUpperCase();
@@ -40,68 +53,164 @@ export function generateDefaultOgImage(item: PlatformItem): string {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
     <defs>
-      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0f172a"/>
-        <stop offset="60%" stop-color="#1e293b"/>
-        <stop offset="100%" stop-color="#090d16"/>
+      <!-- Background subtle light corporate gradient -->
+      <linearGradient id="lightBg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="60%" stop-color="#F8FAFC"/>
+        <stop offset="100%" stop-color="#EFF6FF"/>
       </linearGradient>
-      <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="${accent}"/>
-        <stop offset="100%" stop-color="#38bdf8"/>
+
+      <!-- Primary Brand Gradient -->
+      <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0056D2"/>
+        <stop offset="100%" stop-color="#0284C7"/>
       </linearGradient>
-      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="1" opacity="0.25"/>
+
+      <!-- Glass Mockup Shimmer -->
+      <linearGradient id="glassCard" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#F1F5F9" stop-opacity="0.9"/>
+      </linearGradient>
+
+      <!-- Drop Shadows -->
+      <filter id="cardShadow" x="-10%" y="-10%" width="130%" height="130%">
+        <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#0F172A" flood-opacity="0.08"/>
+      </filter>
+      <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="60" result="blur"/>
+      </filter>
+      
+      <!-- Subtle Grid Pattern -->
+      <pattern id="subtleGrid" width="48" height="48" patternUnits="userSpaceOnUse">
+        <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#E2E8F0" stroke-width="1" opacity="0.6"/>
       </pattern>
     </defs>
     
-    <!-- Background -->
-    <rect width="1200" height="630" fill="url(#bg)"/>
-    <rect width="1200" height="630" fill="url(#grid)"/>
+    <!-- Base Background -->
+    <rect width="1200" height="630" fill="url(#lightBg)"/>
+    <rect width="1200" height="630" fill="url(#subtleGrid)"/>
 
-    <!-- Decorative Glow Circles -->
-    <circle cx="1050" cy="150" r="280" fill="${accent}" opacity="0.18" filter="blur(80px)"/>
-    <circle cx="150" cy="550" r="220" fill="#38bdf8" opacity="0.12" filter="blur(70px)"/>
+    <!-- Right Side Decorative Layered Circles & Ambient Glow (Asymmetrical) -->
+    <circle cx="1050" cy="180" r="320" fill="#0056D2" opacity="0.06" filter="url(#glowFilter)"/>
+    <circle cx="920" cy="480" r="260" fill="#38BDF8" opacity="0.08" filter="url(#glowFilter)"/>
+    <circle cx="1120" cy="315" r="220" fill="none" stroke="#0056D2" stroke-width="1.5" opacity="0.12" stroke-dasharray="6 6"/>
+    <circle cx="1120" cy="315" r="340" fill="none" stroke="#94A3B8" stroke-width="1" opacity="0.15"/>
 
-    <!-- Top Badge Row -->
-    <g transform="translate(80, 80)">
-      <rect width="210" height="44" rx="22" fill="#1e293b" stroke="#334155" stroke-width="2"/>
-      <circle cx="28" cy="22" r="6" fill="${accent}"/>
-      <text x="44" y="27" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" letter-spacing="2">SYNCROZZ • ${category}</text>
+    <!-- TOP HEADER BAR -->
+    <!-- Left: Brand Identifier -->
+    <g transform="translate(80, 60)">
+      <rect width="180" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#cardShadow)"/>
+      <image href="${SYNCROZZ_PRIMARY_LOGO}" x="12" y="9" width="28" height="28" />
+      <text x="48" y="29" fill="#0056D2" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="18" font-weight="900" letter-spacing="1">SYNCROZZ</text>
     </g>
 
-    <!-- Brand Logo Top Right -->
-    <g transform="translate(1000, 70)">
-      <rect width="120" height="48" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-      <text x="60" y="31" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" text-anchor="middle" letter-spacing="1">SYNCROZZ</text>
+    <!-- Center/Right: Category Pill -->
+    <g transform="translate(280, 60)">
+      <rect width="190" height="46" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+      <circle cx="20" cy="23" r="5" fill="${accent}"/>
+      <text x="34" y="28" fill="#1E40AF" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="13" font-weight="800" letter-spacing="1.5">${category}</text>
     </g>
 
-    <!-- Main Title -->
-    <g transform="translate(80, 240)">
-      <text x="0" y="0" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="64" font-weight="900" letter-spacing="-1">${fullName}</text>
-      <text x="0" y="60" fill="url(#accentGrad)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700">${item.tagline}</text>
+    <!-- Top Right 1200x630 Badge -->
+    <g transform="translate(1000, 60)">
+      <rect width="120" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+      <text x="60" y="28" fill="#64748B" font-family="monospace" font-size="12" font-weight="700" text-anchor="middle">1200 × 630</text>
     </g>
 
-    <!-- Description -->
-    <g transform="translate(80, 360)">
-      <foreignObject width="1040" height="120">
-        <p xmlns="http://www.w3.org/1999/xhtml" style="color: #94a3b8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 22px; line-height: 1.5; margin: 0;">
-          ${item.description}
-        </p>
-      </foreignObject>
+    <!-- LEFT SIDE: MAIN INFORMATION & TYPOGRAPHY -->
+    <g transform="translate(80, 180)">
+      
+      <!-- Overline Tagline Badge -->
+      <g transform="translate(0, 0)">
+        <rect width="320" height="32" rx="8" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+        <text x="14" y="21" fill="#475569" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="12" font-weight="700" letter-spacing="1">SMART SOLUTIONS ECOSYSTEM</text>
+      </g>
+
+      <!-- Main Headline Name -->
+      <text x="0" y="80" fill="#0F172A" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="52" font-weight="900" letter-spacing="-1.5">
+        ${fullName}
+      </text>
+
+      <!-- Sub-headline Tagline with Accent Color -->
+      <text x="0" y="130" fill="${accent}" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="24" font-weight="700">
+        ${item.tagline}
+      </text>
+
+      <!-- Description Block -->
+      <g transform="translate(0, 160)">
+        <foreignObject width="540" height="110">
+          <p xmlns="http://www.w3.org/1999/xhtml" style="color: #475569; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; font-size: 19px; line-height: 1.5; margin: 0; font-weight: 500;">
+            ${item.description}
+          </p>
+        </foreignObject>
+      </g>
+
+      <!-- Bottom Domain Pill & Feature Pill -->
+      <g transform="translate(0, 290)">
+        <rect width="380" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5" filter="url(#cardShadow)"/>
+        <circle cx="20" cy="22" r="5" fill="#10B981"/>
+        <text x="34" y="27" fill="#0F172A" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="14" font-weight="700">syncrozz.com/${item.id}</text>
+        <text x="240" y="27" fill="#64748B" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="13" font-weight="600">| Status: ${item.status || 'Active'}</text>
+      </g>
     </g>
 
-    <!-- Bottom Meta Pill -->
-    <g transform="translate(80, 520)">
-      <rect width="420" height="46" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-      <text x="24" y="29" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600">🌐 https://syncrozz.com/${item.id} • Open Graph (JPG)</text>
+    <!-- RIGHT SIDE: ASYMMETRICAL DIGITAL DASHBOARD & DEVICE MOCKUP -->
+    <g transform="translate(680, 150)" filter="url(#cardShadow)">
+      <!-- Main Outer Device/Dashboard Canvas -->
+      <rect width="440" height="380" rx="24" fill="url(#glassCard)" stroke="#E2E8F0" stroke-width="2"/>
+      
+      <!-- Top Window Header Bar -->
+      <rect width="440" height="44" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <circle cx="24" cy="22" r="5" fill="#EF4444" opacity="0.8"/>
+      <circle cx="40" cy="22" r="5" fill="#F59E0B" opacity="0.8"/>
+      <circle cx="56" cy="22" r="5" fill="#10B981" opacity="0.8"/>
+      <text x="220" y="27" fill="#64748B" font-family="monospace" font-size="11" font-weight="600" text-anchor="middle">app.syncrozz.com/${item.id}</text>
+
+      <!-- Mockup Hero Content Area -->
+      <g transform="translate(24, 64)">
+        <!-- Top Metric Cards Row -->
+        <rect width="186" height="74" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+        <text x="16" y="28" fill="#64748B" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="700">STATUS SISTEM</text>
+        <text x="16" y="54" fill="#0056D2" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="900">${item.status || 'Aktif'}</text>
+
+        <g transform="translate(206, 0)">
+          <rect width="186" height="74" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+          <text x="16" y="28" fill="#64748B" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="700">EKOSISTEM</text>
+          <text x="16" y="54" fill="#10B981" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="900">SYNCROZZ</text>
+        </g>
+
+        <!-- Center Interactive Flow / Visual Graphic -->
+        <g transform="translate(0, 90)">
+          <rect width="392" height="120" rx="16" fill="url(#brandGrad)"/>
+          <circle cx="340" cy="60" r="50" fill="#FFFFFF" opacity="0.1"/>
+          
+          <text x="24" y="44" fill="#FFFFFF" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="800">
+            ${fullName}
+          </text>
+          <text x="24" y="70" fill="#E0F2FE" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="500">
+            Automasi Pintar & Penyegerakan Data Berpusat
+          </text>
+          
+          <!-- Launch Badge in graphic -->
+          <g transform="translate(24, 84)">
+            <rect width="130" height="24" rx="6" fill="#FFFFFF"/>
+            <text x="65" y="16" fill="#0056D2" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="800" text-anchor="middle">BUKA PLATFORM →</text>
+          </g>
+        </g>
+
+        <!-- Bottom Status Bar -->
+        <g transform="translate(0, 226)">
+          <rect width="392" height="60" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+          <circle cx="24" cy="30" r="6" fill="#0056D2"/>
+          <text x="40" y="35" fill="#0F172A" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700">Platform Rasmi Ekosistem SYNCROZZ</text>
+        </g>
+      </g>
     </g>
 
-    <!-- 1200x630 Badge -->
-    <g transform="translate(1010, 520)">
-      <rect width="110" height="46" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-      <text x="55" y="29" fill="#94a3b8" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">1200 × 630</text>
-    </g>
+    <!-- Outer Card Subtle Border -->
+    <rect width="1200" height="630" fill="none" stroke="#CBD5E1" stroke-width="2"/>
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
+

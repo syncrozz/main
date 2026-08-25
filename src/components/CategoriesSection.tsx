@@ -38,64 +38,64 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
   };
 
   return (
-    <section id="solutions" className="py-16 md:py-24 bg-slate-50/40 border-y border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10">
+    <section id="solutions" className="py-10 md:py-14 bg-slate-50/40 border-y border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-2">
-          <span className="text-[11px] font-bold tracking-[0.2em] text-[#0056D2] uppercase bg-blue-50 px-3 py-1 rounded-full inline-block">
+        <div className="text-center max-w-3xl mx-auto mb-8 space-y-1">
+          <span className="text-[10px] font-bold tracking-[0.18em] text-[#0056D2] uppercase bg-blue-50 px-2.5 py-0.5 rounded-full inline-block">
             Kategori Penyelesaian
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Direka Mengikut Sektor & Keperluan
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 font-normal">
+          <p className="text-xs sm:text-sm text-slate-500 font-normal">
             Struktur ekosistem yang teratur mengikut objektif khusus institusi, tenaga pendidik, dan komuniti anda.
           </p>
         </div>
 
         {/* Categories Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {CATEGORIES_DATA.map((cat) => (
             <div
               key={cat.id}
               id={`category-card-${cat.id.toLowerCase()}`}
-              className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all flex flex-col justify-between group"
+              className="bg-white rounded-xl p-4 sm:p-5 border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div>
                 {/* Category Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0056D2] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0056D2] flex items-center justify-center group-hover:scale-105 transition-transform">
                     {getCategoryIcon(cat.iconName)}
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200/80 text-slate-700 text-[11px] font-bold">
                     {cat.count} Platform
                   </span>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-[#0056D2] transition-colors">
+                <h3 className="text-base font-bold text-slate-900 mb-0.5 group-hover:text-[#0056D2] transition-colors">
                   {cat.name}
                 </h3>
-                <p className="text-xs font-semibold text-[#0056D2] mb-3">
+                <p className="text-xs font-semibold text-[#0056D2] mb-2">
                   {cat.tagline}
                 </p>
 
                 {/* Description */}
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6 font-normal">
+                <p className="text-xs text-slate-500 leading-relaxed mb-4 font-normal">
                   {cat.description}
                 </p>
 
                 {/* Highlighted Tools */}
-                <div className="space-y-2 mb-6">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="space-y-1.5 mb-4">
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                     Platform Termasuk:
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {cat.highlightedPlatforms.map((tool, i) => (
                       <span
                         key={i}
-                        className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200/80"
+                        className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 text-[11px] font-medium border border-slate-200/80"
                       >
                         {tool}
                       </span>
@@ -107,7 +107,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
               {/* Action */}
               <button
                 onClick={() => onSelectCategory(cat.id)}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-[#0056D2] border border-slate-200/80 hover:border-blue-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2 px-3 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-[#0056D2] border border-slate-200/80 hover:border-blue-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Lihat Platform {cat.name}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
