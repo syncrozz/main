@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -15,10 +15,13 @@ import {
   Link2,
   Check,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Pencil,
+  RotateCcw,
+  Globe
 } from 'lucide-react';
 import { PlatformItem } from '../types';
-import { generateDefaultOgImage } from '../utils/ogStorage';
+import { generateDefaultOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from '../utils/ogStorage';
 import { useAuth } from '../auth/AuthContext';
 
 interface PlatformModalProps {
@@ -43,11 +46,51 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
 
   const [copied, setCopied] = useState(false);
   const [demoState, setDemoState] = useState<'idle' | 'simulating' | 'success'>('idle');
+  
+  // Custom Platform External Link State
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>({});
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [editedUrl, setEditedUrl] = useState('');
+  const [urlSavedToast, setUrlSavedToast] = useState(false);
+
+  useEffect(() => {
+    setCustomUrls(getCustomPlatformUrls());
+  }, [platform]);
+
+  useEffect(() => {
+    if (platform) {
+      const currentUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
+      setEditedUrl(currentUrl);
+      setIsEditingUrl(false);
+    }
+  }, [platform, customUrls]);
+
+  // Keyboard Escape listener & body scroll lock
+  useEffect(() => {
+    if (!platform) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // Lock body scroll
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [platform, onClose]);
 
   if (!platform) return null;
 
   const customImage = customOgImages[platform.id];
   const ogImageUrl = customImage || generateDefaultOgImage(platform);
+  const targetExternalUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText?.(window.location.origin + '#' + platform.id);
@@ -55,11 +98,44 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSimulate = () => {
-    setDemoState('simulating');
-    setTimeout(() => {
-      setDemoState('success');
-    }, 900);
+  const handleOpenExternalLink = () => {
+    if (targetExternalUrl) {
+      window.open(targetExternalUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleSaveUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!platform) return;
+    const finalUrl = editedUrl.trim();
+    if (finalUrl) {
+      saveCustomPlatformUrl(platform.id, finalUrl);
+      setCustomUrls((prev) => ({ ...prev, [platform.id]: finalUrl }));
+    } else {
+      removeCustomPlatformUrl(platform.id);
+      setCustomUrls((prev) => {
+        const next = { ...prev };
+        delete next[platform.id];
+        return next;
+      });
+    }
+    setIsEditingUrl(false);
+    setUrlSavedToast(true);
+    setTimeout(() => setUrlSavedToast(false), 2500);
+  };
+
+  const handleResetDefaultUrl = () => {
+    if (!platform) return;
+    removeCustomPlatformUrl(platform.id);
+    setCustomUrls((prev) => {
+      const next = { ...prev };
+      delete next[platform.id];
+      return next;
+    });
+    setEditedUrl(platform.url || `https://syncrozz.com/${platform.id}`);
+    setIsEditingUrl(false);
+    setUrlSavedToast(true);
+    setTimeout(() => setUrlSavedToast(false), 2500);
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +153,10 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       
       {/* Modal Card */}
       <div 
@@ -158,14 +237,27 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
             </p>
           </div>
 
-          {/* Interactive Simulation Sandbox */}
+          {/* Interactive Simulation Sandbox & External Link Hub */}
           <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                <span className="text-xs font-bold text-slate-800">Pratonton Antara Muka Interaktif</span>
+                <span className="text-xs font-bold text-slate-800">Akses Platform & Pautan Luar</span>
               </div>
-              <span className="text-[11px] text-slate-500">Simulasi Langsung</span>
+              <div className="flex items-center gap-2">
+                {hasAdminAccess && (
+                  <button
+                    id="admin-edit-platform-url-btn"
+                    onClick={() => setIsEditingUrl(!isEditingUrl)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/80 transition-colors cursor-pointer"
+                    title="Edit Pautan Luar (Admin Access)"
+                  >
+                    <Pencil className="w-3 h-3 text-amber-600" />
+                    <span>{isEditingUrl ? 'Tutup Edit' : 'Edit Pautan'}</span>
+                  </button>
+                )}
+                <span className="text-[11px] text-slate-500">Akses Langsung</span>
+              </div>
             </div>
 
             <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-2xs space-y-3">
@@ -174,39 +266,105 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
                 <span className="text-emerald-600 font-medium">Sistem Bersepadu SYNCROZZ</span>
               </div>
 
-              {demoState === 'idle' && (
-                <div className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <p className="text-xs text-slate-600">
-                    Klik untuk uji simulasi pengesahan pantas bagi modul ini.
-                  </p>
-                  <button
-                    onClick={handleSimulate}
-                    className="px-4 py-2 rounded-lg bg-[#0056D2] hover:bg-blue-700 text-white text-xs font-bold shadow-xs shrink-0 cursor-pointer"
-                  >
-                    Uji Tindakan Segera
-                  </button>
+              {/* Toast when URL is saved */}
+              {urlSavedToast && (
+                <div className="py-2 px-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Pautan platform berjaya dikemaskini & disimpan!</span>
                 </div>
               )}
 
-              {demoState === 'simulating' && (
-                <div className="py-4 text-center space-y-2">
-                  <div className="inline-block w-5 h-5 border-2 border-[#0056D2] border-t-transparent rounded-full animate-spin"></div>
-                  <div className="text-xs text-slate-600 font-medium">Menyelaraskan data ke ekosistem SYNCROZZ...</div>
-                </div>
-              )}
-
-              {demoState === 'success' && (
-                <div className="py-2 flex items-center justify-between bg-emerald-50 text-emerald-800 p-3 rounded-lg border border-emerald-200">
-                  <div className="flex items-center gap-2 text-xs font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Tindakan Berjaya Diproses & Diselaraskan!</span>
+              {/* Admin URL Editing Panel */}
+              {isEditingUrl && hasAdminAccess ? (
+                <form onSubmit={handleSaveUrl} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-blue-600" />
+                      <span>URL Pautan Luar (External Link)</span>
+                    </label>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                      Akses Pentadbir
+                    </span>
                   </div>
-                  <button
-                    onClick={() => setDemoState('idle')}
-                    className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                  >
-                    Set Semula
-                  </button>
+                  
+                  <div className="space-y-1">
+                    <input
+                      type="url"
+                      value={editedUrl}
+                      onChange={(e) => setEditedUrl(e.target.value)}
+                      placeholder="https://app.syncrozz.com/modul-anda"
+                      className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Masukkan pautan penuh (cth: <code>https://...</code>). Pengguna yang menekan butang <strong>Test Platform</strong> akan terus dibawa ke laman ini.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResetDefaultUrl}
+                      className="px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Kembalikan kepada URL lalai"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset Lalai</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingUrl(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Simpan Pautan</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <div className="py-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="space-y-1 text-left w-full sm:w-auto">
+                    <p className="text-xs text-slate-600">
+                      Buka dan uji platform langsung pada tab baharu.
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono truncate max-w-xs sm:max-w-md">
+                      <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="truncate">{targetExternalUrl}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                    {hasAdminAccess && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingUrl(true)}
+                        className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-amber-600 shadow-2xs transition-colors cursor-pointer"
+                        title="Edit Pautan Luar (Admin)"
+                        aria-label="Edit Pautan Luar Platform"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <button
+                      id="simulate-platform-test-btn"
+                      onClick={handleOpenExternalLink}
+                      className="px-4 py-2 rounded-lg bg-[#0056D2] hover:bg-blue-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                      title="Buka pautan platform luar di tab baharu"
+                    >
+                      <span>Test Platform</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

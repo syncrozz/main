@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Layers, 
   Upload, 
@@ -12,11 +12,14 @@ import {
   RefreshCw,
   Copy,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Globe,
+  Pencil,
+  RotateCcw
 } from 'lucide-react';
 import { PLATFORMS_DATA } from '../../data/platforms';
 import { PlatformItem } from '../../types';
-import { generateDefaultOgImage, getOfficialMasterOgImage } from '../../utils/ogStorage';
+import { generateDefaultOgImage, getOfficialMasterOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from '../../utils/ogStorage';
 import { SYNCROZZ_OGI_OFFICIAL } from '../../data/syncrozzAssets';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -34,9 +37,54 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   const { user } = useAuth();
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem>(PLATFORMS_DATA[0]);
   const [copiedCode, setCopiedCode] = useState(false);
+  
+  // Custom Platform URLs State
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>({});
+  const [editingUrl, setEditingUrl] = useState('');
+  const [urlSavedMessage, setUrlSavedMessage] = useState(false);
+
+  useEffect(() => {
+    setCustomUrls(getCustomPlatformUrls());
+  }, []);
+
+  useEffect(() => {
+    const activeUrl = customUrls[selectedPlatform.id] || selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
+    setEditingUrl(activeUrl);
+  }, [selectedPlatform, customUrls]);
 
   const currentCustomImage = customOgImages[selectedPlatform.id];
   const activeImage = currentCustomImage || generateDefaultOgImage(selectedPlatform);
+  const activePlatformUrl = customUrls[selectedPlatform.id] || selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
+
+  const handleSavePlatformUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalUrl = editingUrl.trim();
+    if (finalUrl) {
+      saveCustomPlatformUrl(selectedPlatform.id, finalUrl);
+      setCustomUrls((prev) => ({ ...prev, [selectedPlatform.id]: finalUrl }));
+    } else {
+      removeCustomPlatformUrl(selectedPlatform.id);
+      setCustomUrls((prev) => {
+        const next = { ...prev };
+        delete next[selectedPlatform.id];
+        return next;
+      });
+    }
+    setUrlSavedMessage(true);
+    setTimeout(() => setUrlSavedMessage(false), 2500);
+  };
+
+  const handleResetPlatformUrl = () => {
+    removeCustomPlatformUrl(selectedPlatform.id);
+    setCustomUrls((prev) => {
+      const next = { ...prev };
+      delete next[selectedPlatform.id];
+      return next;
+    });
+    setEditingUrl(selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`);
+    setUrlSavedMessage(true);
+    setTimeout(() => setUrlSavedMessage(false), 2500);
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, platformId: string) => {
     if (e.target.files && e.target.files[0]) {
@@ -263,6 +311,66 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                   {currentCustomImage ? 'JPG Custom / Master' : '1200x630 SVG Template'}
                 </div>
               </div>
+            </div>
+
+            {/* External Platform Link Manager (Test Platform Action Target) */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-[#0056D2]" />
+                  <span>Pautan Luar Platform (Test Platform Target URL)</span>
+                </span>
+
+                <a 
+                  href={activePlatformUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0056D2] hover:underline"
+                >
+                  <span>Uji Pautan</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              {urlSavedMessage && (
+                <div className="py-1.5 px-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Pautan URL platform berjaya dikemaskini!</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSavePlatformUrl} className="space-y-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="url"
+                    value={editingUrl}
+                    onChange={(e) => setEditingUrl(e.target.value)}
+                    placeholder={`https://syncrozz.com/${selectedPlatform.id}`}
+                    className="flex-grow px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    required
+                  />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleResetPlatformUrl}
+                      className="px-2.5 py-2 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                      title="Reset kepada URL asal"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3.5 py-2 text-xs font-bold text-white bg-[#0056D2] hover:bg-blue-700 rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Simpan URL</span>
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  URL ini akan dibuka apabila pengguna atau staf menekan butang <strong>"Test Platform"</strong> di modal platform.
+                </p>
+              </form>
             </div>
 
             {/* Meta Tags Generator Snippet */}

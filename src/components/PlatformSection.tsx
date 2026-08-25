@@ -387,21 +387,31 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
                 <div
                   key={item.id}
                   id={`card-platform-${item.id}`}
-                  className="group relative bg-white rounded-xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden text-left"
+                  onClick={() => onSelectPlatform(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectPlatform(item);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Buka butiran platform ${item.name}`}
+                  className="group relative bg-white rounded-xl border border-slate-100 hover:border-blue-300 hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0056D2]/30"
                 >
                   {/* Card Main Area */}
                   <div>
-                    {/* 1. Open Graph Image Banner (1200x630 format) for each card */}
-                    <div className="relative aspect-[16/8.2] w-full bg-slate-900 overflow-hidden border-b border-slate-100">
+                    {/* 1. Open Graph Image Banner (1200x630 format) for each card - Clickable */}
+                    <div className="relative aspect-[16/8.2] w-full bg-slate-900 overflow-hidden border-b border-slate-100 cursor-pointer">
                       <img
                         src={cardOgImage}
                         alt={`Open Graph for ${item.name}`}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
                         referrerPolicy="no-referrer"
                       />
 
                       {/* OG Image Pill Overlay */}
-                      <div className="absolute top-2 left-2 flex items-center gap-1">
+                      <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
                         <span className="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md text-[9px] font-mono font-bold text-white border border-white/20 flex items-center gap-1">
                           <ImageIcon className="w-2.5 h-2.5 text-sky-400" />
                           <span>OG (JPG)</span>
@@ -416,11 +426,10 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
 
                       {/* Quick Gear / Admin Trigger on Card - Only visible when Admin Mode or Google OAuth Admin is active */}
                       {hasAdminAccess && (
-                        <div className="absolute top-2 right-2 flex items-center gap-1">
+                        <div className="absolute top-2 right-2 flex items-center gap-1 z-10" onClick={(e) => e.stopPropagation()}>
                           <label 
                             title="Muat naik fail Open Graph Image (JPG)"
                             className="px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-md text-white hover:bg-[#0056D2] transition-colors text-[9px] font-bold flex items-center gap-1 cursor-pointer border border-white/20 shadow-xs"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <Upload className="w-2.5 h-2.5" />
                             <span>JPG</span>
@@ -449,7 +458,10 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
 
                     {/* Dedicated Open Graph Upload Drop Area (Visible when Admin Mode active) */}
                     {isAdminMode && (
-                      <div className="p-2.5 bg-amber-50/70 border-b border-amber-100 text-xs">
+                      <div 
+                        className="p-2.5 bg-amber-50/70 border-b border-amber-100 text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <span className="font-bold text-amber-950 text-[10px] flex items-center gap-1">
                             <Upload className="w-2.5 h-2.5 text-amber-700" />
@@ -486,10 +498,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
                     )}
 
                     {/* Card Content Details */}
-                    <div 
-                      onClick={() => onSelectPlatform(item)} 
-                      className="p-4 cursor-pointer"
-                    >
+                    <div className="p-4 cursor-pointer">
                       {/* Top Row: Logo & Category Badge */}
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="shrink-0 group-hover:scale-105 transition-transform duration-200">
@@ -535,7 +544,6 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
 
                   {/* Card Footer CTA */}
                   <div 
-                    onClick={() => onSelectPlatform(item)}
                     className="px-4 pb-3.5 pt-0.5 flex items-center justify-between text-xs font-bold text-[#0056D2] group-hover:text-blue-700 cursor-pointer"
                   >
                     <span className="inline-flex items-center gap-1">
