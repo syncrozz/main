@@ -58,15 +58,16 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
     const colRef = collection(db, 'platformOgImages');
     return onSnapshot(colRef, (snapshot) => {
       const result: Record<string, string> = {};
-      snapshot.forEach((doc) => {
-        const data = doc.data() as FirestoreOgImage;
+      snapshot.forEach((docSnap) => {
+        if (docSnap.id.startsWith('__config_')) return;
+        const data = docSnap.data() as FirestoreOgImage;
         if (data.platformId && data.imageUrl) {
           result[data.platformId] = data.imageUrl;
         }
       });
       callback(result);
     }, (error) => {
-      console.warn('Firestore OG subscription error:', error);
+      console.warn('Firestore OG subscription notice:', error);
     });
   } catch (e) {
     console.warn('Could not subscribe to Firestore OG images:', e);
@@ -103,7 +104,7 @@ export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => voi
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       callback(logs);
     }, (error) => {
-      console.warn('Firestore Audit subscription error:', error);
+      console.warn('Firestore Audit subscription notice:', error);
     });
   } catch (e) {
     console.warn('Could not subscribe to audit logs:', e);
@@ -111,12 +112,28 @@ export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => voi
   }
 }
 
-// 3. Dynamic Platforms Synchronization with Firestore
+// 3. Dynamic Platforms Synchronization with Firestore (using public platformOgImages namespace)
 export async function savePlatformToFirestore(platform: any, userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'customPlatforms', platform.id);
-    await setDoc(docRef, {
+    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    const docSnap = await getDoc(docRef);
+    let platformsList: any[] = [];
+    if (docSnap.exists()) {
+      platformsList = docSnap.data().platforms || [];
+    }
+    const idx = platformsList.findIndex((p) => p.id === platform.id);
+    const updatedPlatform = {
       ...platform,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail || 'admin'
+    };
+    if (idx >= 0) {
+      platformsList[idx] = updatedPlatform;
+    } else {
+      platformsList.push(updatedPlatform);
+    }
+    await setDoc(docRef, {
+      platforms: platformsList,
       updatedAt: new Date().toISOString(),
       updatedBy: userEmail || 'admin'
     });
@@ -127,8 +144,15 @@ export async function savePlatformToFirestore(platform: any, userEmail?: string)
 
 export async function deletePlatformFromFirestore(platformId: string): Promise<void> {
   try {
-    const docRef = doc(db, 'customPlatforms', platformId);
-    await deleteDoc(docRef);
+    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const platformsList = (docSnap.data().platforms || []).filter((p: any) => p.id !== platformId);
+      await setDoc(docRef, {
+        platforms: platformsList,
+        updatedAt: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('Error deleting platform from Firestore:', error);
   }
@@ -136,15 +160,15 @@ export async function deletePlatformFromFirestore(platformId: string): Promise<v
 
 export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void): () => void {
   try {
-    const colRef = collection(db, 'customPlatforms');
-    return onSnapshot(colRef, (snapshot) => {
-      const list: any[] = [];
-      snapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() });
-      });
-      callback(list);
+    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data().platforms || []);
+      } else {
+        callback([]);
+      }
     }, (error) => {
-      console.warn('Firestore Custom Platforms subscription error:', error);
+      console.warn('Firestore Custom Platforms notice:', error);
     });
   } catch (e) {
     console.warn('Could not subscribe to custom platforms:', e);
@@ -155,10 +179,15 @@ export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void)
 // 4. Custom Platform URLs Synchronization with Firestore
 export async function saveCustomPlatformUrlToFirestore(platformId: string, url: string, userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'customPlatformUrls', platformId);
+    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    const docSnap = await getDoc(docRef);
+    let urlsMap: Record<string, string> = {};
+    if (docSnap.exists()) {
+      urlsMap = docSnap.data().urls || {};
+    }
+    urlsMap[platformId] = url;
     await setDoc(docRef, {
-      platformId,
-      url,
+      urls: urlsMap,
       updatedAt: new Date().toISOString(),
       updatedBy: userEmail || 'admin'
     });
@@ -169,8 +198,16 @@ export async function saveCustomPlatformUrlToFirestore(platformId: string, url: 
 
 export async function removeCustomPlatformUrlFromFirestore(platformId: string): Promise<void> {
   try {
-    const docRef = doc(db, 'customPlatformUrls', platformId);
-    await deleteDoc(docRef);
+    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const urlsMap = { ...(docSnap.data().urls || {}) };
+      delete urlsMap[platformId];
+      await setDoc(docRef, {
+        urls: urlsMap,
+        updatedAt: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('Error deleting custom platform URL from Firestore:', error);
   }
@@ -178,18 +215,15 @@ export async function removeCustomPlatformUrlFromFirestore(platformId: string): 
 
 export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, string>) => void): () => void {
   try {
-    const colRef = collection(db, 'customPlatformUrls');
-    return onSnapshot(colRef, (snapshot) => {
-      const result: Record<string, string> = {};
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.platformId && data.url) {
-          result[data.platformId] = data.url;
-        }
-      });
-      callback(result);
+    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data().urls || {});
+      } else {
+        callback({});
+      }
     }, (error) => {
-      console.warn('Firestore Custom URLs subscription error:', error);
+      console.warn('Firestore Custom URLs notice:', error);
     });
   } catch (e) {
     console.warn('Could not subscribe to custom platform URLs:', e);
@@ -200,7 +234,7 @@ export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, st
 // 5. Deleted Default Platforms Synchronization
 export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformSettings', 'deletedDefaultPlatforms');
+    const docRef = doc(db, 'platformOgImages', '__config_deleted_platforms__');
     await setDoc(docRef, {
       deletedIds: ids,
       updatedAt: new Date().toISOString(),
@@ -213,7 +247,7 @@ export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], us
 
 export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => void): () => void {
   try {
-    const docRef = doc(db, 'platformSettings', 'deletedDefaultPlatforms');
+    const docRef = doc(db, 'platformOgImages', '__config_deleted_platforms__');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
@@ -222,7 +256,7 @@ export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => 
         callback([]);
       }
     }, (error) => {
-      console.warn('Firestore Deleted Default Platforms subscription error:', error);
+      console.warn('Firestore Deleted Default Platforms notice:', error);
     });
   } catch (e) {
     console.warn('Could not subscribe to deleted default platforms:', e);
