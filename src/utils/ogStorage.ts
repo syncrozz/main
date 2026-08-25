@@ -77,10 +77,15 @@ export function removeCustomOgImage(platformId: string): void {
  * - Right: Technology / dashboard / hero device visual mockup with layered translucent circles & soft shadows
  * - Palette: SYNCROZZ Blue (#0056D2) + Dark Navy (#0F172A) + Clean White (#FFFFFF) + Ice Blue (#EFF6FF)
  */
-export function generateDefaultOgImage(item: PlatformItem): string {
-  const fullName = `${item.name} ${item.subName || ''}`.trim();
-  const category = item.category.toUpperCase();
-  const accent = item.accentColor || '#0056D2';
+export function generateDefaultOgImage(item?: Partial<PlatformItem> | null): string {
+  const safeItem = item || {};
+  const fullName = `${safeItem.name || 'SYNCROZZ'} ${safeItem.subName || ''}`.trim();
+  const category = (safeItem.category || 'PLATFORM').toUpperCase();
+  const accent = safeItem.accentColor || '#0056D2';
+  const tagline = safeItem.tagline || 'Inovasi Digital & Automasi Pintar';
+  const description = safeItem.description || 'Penyelesaian digital pintar untuk pendidikan, produktiviti dan inovasi digital.';
+  const id = safeItem.id || 'app';
+  const status = safeItem.status || 'Aktif';
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
     <defs>
@@ -164,14 +169,14 @@ export function generateDefaultOgImage(item: PlatformItem): string {
 
       <!-- Sub-headline Tagline with Accent Color -->
       <text x="0" y="130" fill="${accent}" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="24" font-weight="700">
-        ${item.tagline}
+        ${tagline}
       </text>
 
       <!-- Description Block -->
       <g transform="translate(0, 160)">
         <foreignObject width="540" height="110">
           <p xmlns="http://www.w3.org/1999/xhtml" style="color: #475569; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; font-size: 19px; line-height: 1.5; margin: 0; font-weight: 500;">
-            ${item.description}
+            ${description}
           </p>
         </foreignObject>
       </g>
@@ -180,8 +185,8 @@ export function generateDefaultOgImage(item: PlatformItem): string {
       <g transform="translate(0, 290)">
         <rect width="380" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5" filter="url(#cardShadow)"/>
         <circle cx="20" cy="22" r="5" fill="#10B981"/>
-        <text x="34" y="27" fill="#0F172A" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="14" font-weight="700">syncrozz.com/${item.id}</text>
-        <text x="240" y="27" fill="#64748B" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="13" font-weight="600">| Status: ${item.status || 'Active'}</text>
+        <text x="34" y="27" fill="#0F172A" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="14" font-weight="700">syncrozz.com/${id}</text>
+        <text x="240" y="27" fill="#64748B" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="13" font-weight="600">| Status: ${status}</text>
       </g>
     </g>
 
@@ -195,14 +200,14 @@ export function generateDefaultOgImage(item: PlatformItem): string {
       <circle cx="24" cy="22" r="5" fill="#EF4444" opacity="0.8"/>
       <circle cx="40" cy="22" r="5" fill="#F59E0B" opacity="0.8"/>
       <circle cx="56" cy="22" r="5" fill="#10B981" opacity="0.8"/>
-      <text x="220" y="27" fill="#64748B" font-family="monospace" font-size="11" font-weight="600" text-anchor="middle">app.syncrozz.com/${item.id}</text>
+      <text x="220" y="27" fill="#64748B" font-family="monospace" font-size="11" font-weight="600" text-anchor="middle">app.syncrozz.com/${id}</text>
 
       <!-- Mockup Hero Content Area -->
       <g transform="translate(24, 64)">
         <!-- Top Metric Cards Row -->
         <rect width="186" height="74" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
         <text x="16" y="28" fill="#64748B" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="700">STATUS SISTEM</text>
-        <text x="16" y="54" fill="#0056D2" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="900">${item.status || 'Aktif'}</text>
+        <text x="16" y="54" fill="#0056D2" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="900">${status}</text>
 
         <g transform="translate(206, 0)">
           <rect width="186" height="74" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>

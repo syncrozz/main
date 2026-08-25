@@ -113,7 +113,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-[#0056D2] text-white flex items-center justify-center font-bold text-xs">
-                  {user?.email?.charAt(0).toUpperCase() || 'A'}
+                  {user?.email?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'A'}
                 </div>
               )}
               <div className="hidden md:block text-left">

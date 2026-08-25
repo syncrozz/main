@@ -568,7 +568,16 @@ export const PlatformFormModal: React.FC<PlatformFormModalProps> = ({
               <div className="flex flex-col sm:flex-row items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="relative aspect-[16/9] w-36 bg-slate-900 rounded-lg overflow-hidden shrink-0 border border-slate-300">
                   <img
-                    src={customOgImagePreview || generateDefaultOgImage({ id: id || 'preview', name: name || 'Preview' } as any)}
+                    src={customOgImagePreview || generateDefaultOgImage({
+                      id: id || 'preview',
+                      name: name || 'Preview',
+                      subName,
+                      category,
+                      accentColor: selectedColor?.accent || '#0056D2',
+                      tagline,
+                      description,
+                      status: status as any
+                    })}
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />

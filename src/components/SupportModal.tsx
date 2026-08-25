@@ -6,10 +6,10 @@ import {
   ChevronDown, 
   ChevronUp, 
   CheckCircle2, 
-  ExternalLink,
-  ShieldCheck,
-  Smartphone,
-  Sparkles
+  ShieldCheck, 
+  Smartphone, 
+  ArrowLeft,
+  QrCode
 } from 'lucide-react';
 
 interface SupportModalProps {
@@ -49,7 +49,8 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
   const handleSaveQR = async () => {
     try {
       setIsDownloading(true);
-      const response = await fetch(QR_IMAGE_URL);
+      const response = await fetch(QR_IMAGE_URL, { mode: 'cors' });
+      if (!response.ok) throw new Error('Fetch failed');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -62,8 +63,17 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 3000);
     } catch (error) {
-      // Fallback: open direct link
-      window.open(QR_IMAGE_URL, '_blank');
+      // Fallback: direct download link opening
+      const a = document.createElement('a');
+      a.href = QR_IMAGE_URL;
+      a.target = '_blank';
+      a.download = 'SYNCROZZ-Sumbangan-QR.jpg';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
     } finally {
       setIsDownloading(false);
     }
@@ -71,45 +81,48 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-xs overflow-y-auto animate-fade-in text-left"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-xs overflow-y-auto animate-fade-in text-left"
       onClick={onClose}
+      id="support-modal-backdrop"
     >
       <div 
-        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-8"
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-auto animate-scale-in"
         onClick={(e) => e.stopPropagation()}
+        id="support-modal-card"
       >
-        {/* Header */}
-        <div className="relative px-6 pt-6 pb-4 bg-gradient-to-b from-blue-50/80 via-slate-50/40 to-white border-b border-slate-100">
+        {/* Header Bar */}
+        <div className="relative px-6 pt-6 pb-4 bg-white border-b border-slate-100 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100">
+                <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                Sumbangan Sukarela
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+              Sokong Inovasi Ini ❤️
+            </h2>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              Platform ini dibangunkan secara berterusan bagi memudahkan warga pendidik dan komuniti. Sokongan ikhlas anda membantu kesinambungan pelayan dan pembangunan inovasi seterusnya.
+            </p>
+          </div>
+
           <button
             onClick={onClose}
             aria-label="Tutup"
             id="close-support-modal-btn"
-            className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="w-8 h-8 -mr-2 -mt-1 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
-
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200/60">
-              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-              Sokongan Komuniti
-            </span>
-          </div>
-
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">
-            Sokong Inisiatif SYNCROZZ
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
-            Jika platform ini bermanfaat kepada anda, anda dialu-alukan untuk menyokong usaha ini. Setiap sumbangan sukarela membantu kelangsungan ekosistem digital dan alatan percuma kami.
-          </p>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           
           {/* QR Code Container */}
-          <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-col items-center justify-center text-center">
-            <div className="relative bg-white p-3 rounded-xl shadow-xs border border-slate-200 max-w-[280px] w-full">
+          <div className="bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-col items-center justify-center text-center">
+            <div className="relative bg-white p-2.5 rounded-xl shadow-xs border border-slate-200/80 max-w-[240px] w-full">
               <img
                 src={QR_IMAGE_URL}
                 alt="Kod QR DuitNow Sumbangan SYNCROZZ"
@@ -119,19 +132,24 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
               />
             </div>
 
-            <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>DuitNow QR / Pembayaran Perbankan & e-Wallet Sah</span>
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>DuitNow QR / Mana-mana Bank & e-Wallet Malaysia</span>
             </div>
 
-            {/* Action Buttons */}
-            <div className="mt-4 w-full flex flex-col sm:flex-row gap-2.5">
+            {/* RM1 Pun Amat Dihargai Badge */}
+            <div className="mt-2.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 text-amber-900 text-xs font-bold inline-flex items-center gap-1">
+              <span>RM1 pun amat dihargai 👏</span>
+            </div>
+
+            {/* Save QR Code Button */}
+            <div className="mt-4 w-full">
               <button
                 type="button"
                 id="save-qr-code-btn"
                 onClick={handleSaveQR}
                 disabled={isDownloading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer disabled:opacity-75"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#0045a8] text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow cursor-pointer disabled:opacity-75"
               >
                 {downloadSuccess ? (
                   <>
@@ -141,20 +159,20 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>{isDownloading ? 'Menyimpan...' : 'Simpan Kod QR (Save QR)'}</span>
+                    <span>{isDownloading ? 'Menyimpan...' : 'Save QR Code'}</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Expandable "Cara Bayar Guna Galeri" (How To Pay) */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
+          {/* Accordion: "Cara Bayar Guna Galeri (How To Pay)" */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
             <button
               type="button"
-              id="how-to-pay-toggle-btn"
+              id="how-to-pay-accordion-btn"
               onClick={() => setIsHowToPayOpen(!isHowToPayOpen)}
-              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 transition-colors flex items-center justify-between text-left cursor-pointer"
+              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/70 transition-colors flex items-center justify-between text-left cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-800">
                 <Smartphone className="w-4 h-4 text-[#0056D2]" />
@@ -168,65 +186,56 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
             </button>
 
             {isHowToPayOpen && (
-              <div className="p-4 bg-white border-t border-slate-200 text-xs sm:text-sm text-slate-600 space-y-2.5">
+              <div className="p-4 bg-white border-t border-slate-200 text-xs text-slate-600 space-y-2.5">
                 <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[10px] flex items-center justify-center mt-0.5">
                     1
                   </span>
-                  <span>Klik butang <strong>"Simpan Kod QR"</strong> di atas ke galeri telefon anda.</span>
+                  <span>Tekan butang <strong>"Save QR Code"</strong> untuk menyimpan imej QR ke dalam galeri telefon anda.</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[10px] flex items-center justify-center mt-0.5">
                     2
                   </span>
-                  <span>Buka mana-mana aplikasi perbankan dalam talian (Maybank, CIMB, Bank Islam, dsb.) atau e-Wallet (Touch 'n Go, Boost, MAE, GrabPay).</span>
+                  <span>Buka aplikasi bank (Maybank, CIMB, Bank Islam, dsb.) atau e-Wallet (Touch 'n Go, MAE, GrabPay, Boost).</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[10px] flex items-center justify-center mt-0.5">
                     3
                   </span>
-                  <span>Pilih fungsi <strong>Scan QR / DuitNow QR</strong>.</span>
+                  <span>Pilih menu <strong>Scan / DuitNow QR</strong>.</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[10px] flex items-center justify-center mt-0.5">
                     4
                   </span>
-                  <span>Pilih ikon <strong>Galeri / Album</strong> dan muat naik gambar Kod QR yang telah disimpan.</span>
+                  <span>Tekan ikon <strong>Galeri / Album / Upload QR</strong> dan pilih gambar QR yang disimpan tadi.</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[10px] flex items-center justify-center mt-0.5">
                     5
                   </span>
-                  <span>Masukkan jumlah sumbangan mengikut keikhlasan anda.</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-[#0056D2] font-bold text-[11px] flex items-center justify-center mt-0.5">
-                    6
-                  </span>
-                  <span>Sahkan transaksi pembayaran. Terima kasih atas sokongan ikhlas anda!</span>
+                  <span>Masukkan nilai sumbangan seikhlas hati dan sahkan pembayaran.</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Gentle Note */}
-          <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100/80 flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-[#0056D2] shrink-0 mt-0.5" />
-            <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-              Sumbangan ini bersifat sukarela dan bukan keperluan untuk menggunakan platform. Anda bebas menutup tetingkap ini pada bila-bila masa.
-            </p>
-          </div>
-
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+        {/* Footer with "Kembali ke SYNCROZZ" Button */}
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+          <span className="text-[11px] text-slate-400">
+            Terima kasih atas sokongan anda
+          </span>
           <button
             type="button"
+            id="back-to-syncrozz-btn"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shadow-2xs"
           >
-            Tutup
+            <ArrowLeft className="w-4 h-4" />
+            <span>Kembali ke SYNCROZZ</span>
           </button>
         </div>
       </div>

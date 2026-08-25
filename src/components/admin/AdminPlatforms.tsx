@@ -297,7 +297,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                       className="w-9 h-9 rounded-lg text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs"
                       style={{ backgroundColor: plat.accentColor || '#0056D2' }}
                     >
-                      {plat.name.charAt(0)}
+                      {plat.name?.charAt(0) || 'P'}
                     </div>
                     <div className="overflow-hidden">
                       <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">

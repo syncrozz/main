@@ -288,16 +288,17 @@ export const Footer: React.FC<FooterProps> = ({
               href="https://syncrozz.com/#support"
               id="footer-support-link"
               onClick={(e) => {
+                // Update hash so URL reflects https://syncrozz.com/#support
+                window.location.hash = '#support';
                 if (onSupportClick) {
                   e.preventDefault();
                   onSupportClick();
                 }
               }}
-              className="text-slate-600 hover:text-[#0056D2] transition-colors inline-flex items-center gap-1.5 cursor-pointer font-medium hover:underline"
-              title="Sokong SYNCROZZ"
+              className="text-slate-600 hover:text-[#0056D2] transition-colors inline-flex items-center gap-1 cursor-pointer font-medium hover:underline"
+              title="Sokong Inovasi Ini ❤️"
             >
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
-              <span>Sokong SYNCROZZ</span>
+              <span>Sokong Inovasi Ini ❤️</span>
             </a>
 
             <span className="hidden sm:inline text-slate-300">|</span>
@@ -305,7 +306,7 @@ export const Footer: React.FC<FooterProps> = ({
             <span className="text-slate-500">
               Develop By{' '}
               <a
-                href="https://wa.me/60145313756"
+                href="https://wasap.my/60145313756"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-slate-600 hover:text-[#0056D2] hover:underline transition-colors font-medium cursor-pointer"

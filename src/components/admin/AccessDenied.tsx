@@ -61,7 +61,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm">
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
+                {user?.email?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             )}
             <div className="overflow-hidden">
