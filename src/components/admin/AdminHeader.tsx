@@ -49,8 +49,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         <div className="flex items-center justify-between h-16">
           
           {/* Brand & Greeting */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-blue-500/20 shrink-0 bg-white p-0.5 border border-slate-100">
+          <button
+            id="admin-brand-logo-btn"
+            onClick={() => onSelectTab('overview')}
+            className="flex items-center gap-3 text-left group cursor-pointer hover:opacity-90 transition-all focus:outline-none"
+            title="Ke Paparan Default Dashboard Pentadbir"
+          >
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-blue-500/20 shrink-0 bg-white p-0.5 border border-slate-100 transition-transform group-hover:scale-105">
               <img 
                 src={SYNCROZZ_PRIMARY_LOGO} 
                 alt="SYNCROZZ" 
@@ -61,7 +66,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-slate-900 tracking-tight text-base">
+                <span className="font-extrabold text-slate-900 tracking-tight text-base group-hover:text-[#0056D2] transition-colors">
                   SYNCROZZ
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-900 text-white">
@@ -82,7 +87,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 Welcome, Admin
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Right User Identity & Actions */}
           <div className="flex items-center gap-3">

@@ -14,6 +14,7 @@ import { SYNCROZZ_PRIMARY_LOGO } from '../data/syncrozzAssets';
 interface NavbarProps {
   onExploreClick: () => void;
   onContactClick: () => void;
+  onLogoClick?: () => void;
   activeSection: string;
   isAdminMode?: boolean;
   onOpenAdminModal?: () => void;
@@ -23,6 +24,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ 
   onExploreClick, 
   onContactClick,
+  onLogoClick,
   activeSection,
   isAdminMode = false,
   onOpenAdminModal,
@@ -64,6 +66,22 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    if (onLogoClick) {
+      onLogoClick();
+    } else {
+      window.location.hash = '#home';
+      const target = document.querySelector('#home');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -79,7 +97,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <a 
             href="#home" 
             id="brand-logo-btn"
+            onClick={handleLogoClick}
             className="flex items-center gap-2.5 group cursor-pointer"
+            title="Ke Paparan Default Dashboard"
           >
             {/* Official SYNCROZZ Logo Image */}
             <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-2xs shadow-blue-500/20 transition-transform group-hover:scale-105 shrink-0 bg-white">

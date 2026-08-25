@@ -201,6 +201,7 @@ function MainAppContent() {
       <Navbar
         onExploreClick={() => scrollToSection('platform')}
         onContactClick={() => setIsContactOpen(true)}
+        onLogoClick={() => scrollToSection('home')}
         activeSection={activeSection}
         isAdminMode={isAdminMode}
         onOpenAdminModal={() => setIsAdminModalOpen(true)}
