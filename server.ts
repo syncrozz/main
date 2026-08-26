@@ -15,6 +15,7 @@ import {
   createContactInquiry,
 } from './src/db/repositories.ts';
 import { seedDatabaseIfEmpty } from './src/db/seed.ts';
+import { isSqlConfigured } from './src/db/index.ts';
 import { PLATFORMS_DATA } from './src/data/platforms.ts';
 import { PlatformItem } from './src/types.ts';
 
@@ -34,7 +35,7 @@ const serverAuditLogs: any[] = [
     email: MASTER_ADMIN_EMAIL,
     action: 'SYSTEM_BOOT',
     status: 'INFO',
-    details: 'Master Admin system initialized with PostgreSQL / Cloud SQL & Google OAuth.'
+    details: 'Master Admin system initialized with Multi-tier Data & Google OAuth.'
   }
 ];
 
@@ -74,7 +75,8 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    database: 'PostgreSQL / Cloud SQL',
+    database: isSqlConfigured() ? 'PostgreSQL / Cloud SQL' : 'Firestore & In-Memory Store',
+    sqlConnected: isSqlConfigured(),
     masterAdminConfigured: true,
     authProtocol: 'Google OAuth 2.0',
     timestamp: Date.now()

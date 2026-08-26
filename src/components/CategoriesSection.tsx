@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   GraduationCap, 
   Building2, 
@@ -11,13 +11,17 @@ import {
   Sparkles
 } from 'lucide-react';
 import { CATEGORIES_DATA } from '../data/platforms';
-import { CategoryDetail } from '../types';
+import { PlatformItem, CategoryDetail } from '../types';
 
 interface CategoriesSectionProps {
+  platforms?: PlatformItem[];
   onSelectCategory: (categoryName: string) => void;
 }
 
-export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCategory }) => {
+export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ 
+  platforms = [],
+  onSelectCategory 
+}) => {
   const [activeCategory, setActiveCategory] = useState<string>('Education');
 
   const getCategoryIcon = (iconName: string) => {
@@ -36,6 +40,26 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
         return <Layers className="w-6 h-6" />;
     }
   };
+
+  // Dynamic category calculations based on actual platforms data
+  const dynamicCategories = useMemo(() => {
+    return CATEGORIES_DATA.map((cat) => {
+      const matchingPlatforms = platforms.filter(
+        (p) => p.category?.toLowerCase() === cat.name.toLowerCase() || p.category?.toLowerCase() === cat.id.toLowerCase()
+      );
+
+      const dynamicCount = matchingPlatforms.length > 0 ? matchingPlatforms.length : cat.count;
+      const dynamicHighlighted = matchingPlatforms.length > 0 
+        ? matchingPlatforms.map((p) => p.name).slice(0, 5)
+        : cat.highlightedPlatforms;
+
+      return {
+        ...cat,
+        count: dynamicCount,
+        highlightedPlatforms: dynamicHighlighted,
+      };
+    });
+  }, [platforms]);
 
   return (
     <section id="solutions" className="py-10 md:py-14 bg-slate-50/40 border-y border-slate-100">
@@ -56,7 +80,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
 
         {/* Categories Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {CATEGORIES_DATA.map((cat) => (
+          {dynamicCategories.map((cat) => (
             <div
               key={cat.id}
               id={`category-card-${cat.id.toLowerCase()}`}
@@ -106,7 +130,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
 
               {/* Action */}
               <button
-                onClick={() => onSelectCategory(cat.id)}
+                onClick={() => onSelectCategory(cat.name)}
                 className="w-full py-2 px-3 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-[#0056D2] border border-slate-200/80 hover:border-blue-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Lihat Platform {cat.name}</span>

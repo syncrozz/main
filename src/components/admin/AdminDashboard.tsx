@@ -44,6 +44,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminOverview
             onNavigateTab={setActiveTab}
             customOgImagesCount={Object.keys(customOgImages).length}
+            totalPlatformsCount={platforms.length}
           />
         )}
 

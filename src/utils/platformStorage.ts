@@ -61,16 +61,28 @@ export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreD
   const localCustom = getLocalCustomPlatforms();
   const localDeleted = getDeletedDefaultPlatformIds();
   
-  const deletedIds = new Set(
-    firestoreDeletedIds !== undefined ? firestoreDeletedIds : localDeleted
-  );
+  const deletedIds = new Set([
+    ...localDeleted,
+    ...(firestoreDeletedIds || [])
+  ]);
 
-  // Use firestore list if provided, otherwise local
-  const customList = firestoreCustomList && firestoreCustomList.length > 0 ? firestoreCustomList : localCustom;
+  // Combine both firestore and local custom platforms into a map by id
   const customMap = new Map<string, PlatformItem>();
-  
-  customList.forEach((item) => {
-    customMap.set(item.id, item);
+
+  // 1. Load firestore items
+  if (firestoreCustomList && Array.isArray(firestoreCustomList)) {
+    firestoreCustomList.forEach((item) => {
+      if (item && item.id) {
+        customMap.set(item.id, item);
+      }
+    });
+  }
+
+  // 2. Load local items (local items merge seamlessly and take precedence for local edits)
+  localCustom.forEach((item) => {
+    if (item && item.id) {
+      customMap.set(item.id, item);
+    }
   });
 
   // Start with default platforms that are not deleted
@@ -90,10 +102,10 @@ export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreD
   });
 
   // Add brand new custom platforms
-  customList.forEach((item) => {
-    if (!processedIds.has(item.id) && !deletedIds.has(item.id)) {
+  customMap.forEach((item, id) => {
+    if (!processedIds.has(id) && !deletedIds.has(id)) {
       result.push(item);
-      processedIds.add(item.id);
+      processedIds.add(id);
     }
   });
 

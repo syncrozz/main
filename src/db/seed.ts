@@ -1,11 +1,15 @@
-import { db } from './index.ts';
+import { db, isSqlConfigured } from './index.ts';
 import { platforms, users, auditLogs } from './schema.ts';
 import { PLATFORMS_DATA } from '../data/platforms.ts';
 import { eq } from 'drizzle-orm';
 
 export async function seedDatabaseIfEmpty() {
+  if (!db || !isSqlConfigured()) {
+    return;
+  }
   try {
     const existing = await db.select().from(platforms);
+
     if (existing.length === 0) {
       console.log('Seeding initial SYNCROZZ platforms into PostgreSQL database...');
       for (const p of PLATFORMS_DATA) {

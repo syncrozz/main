@@ -31,6 +31,7 @@ interface PlatformSectionProps {
   platforms?: PlatformItem[];
   onSelectPlatform: (platform: PlatformItem) => void;
   customOgImages: Record<string, string>;
+  customUrls?: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
   isAdminMode: boolean;
@@ -38,24 +39,38 @@ interface PlatformSectionProps {
   onOpenAdminModal: () => void;
   onAdminClick?: () => void;
   onAddPlatformClick?: () => void;
+  selectedCategory?: PlatformCategory;
+  onSelectCategoryFilter?: (cat: PlatformCategory) => void;
 }
 
 export const PlatformSection: React.FC<PlatformSectionProps> = ({ 
   platforms = PLATFORMS_DATA,
   onSelectPlatform,
   customOgImages,
+  customUrls = {},
   onSaveOgImage,
   onRemoveOgImage,
   isAdminMode,
   onToggleAdminMode,
   onOpenAdminModal,
   onAdminClick,
-  onAddPlatformClick
+  onAddPlatformClick,
+  selectedCategory: controlledCategory,
+  onSelectCategoryFilter
 }) => {
   const { isAuthenticated, isAdmin, isMasterAdmin } = useAuth();
   const hasAdminAccess = isAdminMode || (isAuthenticated && (isAdmin || isMasterAdmin));
 
-  const [selectedCategory, setSelectedCategory] = useState<PlatformCategory>('All');
+  const [internalCategory, setInternalCategory] = useState<PlatformCategory>('All');
+  const selectedCategory = controlledCategory !== undefined ? controlledCategory : internalCategory;
+
+  const handleCategoryChange = (cat: PlatformCategory) => {
+    setInternalCategory(cat);
+    if (onSelectCategoryFilter) {
+      onSelectCategoryFilter(cat);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [uploadSuccessId, setUploadSuccessId] = useState<string | null>(null);
@@ -300,7 +315,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
             </button>
 
             <button 
-              onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }}
+              onClick={() => { handleCategoryChange('All'); setSearchQuery(''); }}
               className="text-xs sm:text-sm font-bold text-[#0056D2] flex items-center gap-1 hover:text-blue-700 transition-colors cursor-pointer"
             >
               <span>Lihat Semua</span>
@@ -354,7 +369,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
               <button
                 key={cat.value}
                 id={`filter-tab-${cat.value.toLowerCase()}`}
-                onClick={() => setSelectedCategory(cat.value)}
+                onClick={() => handleCategoryChange(cat.value)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   selectedCategory === cat.value
                     ? 'bg-white text-[#0056D2] shadow-xs'
@@ -387,7 +402,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
           <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <p className="text-slate-500 text-xs">Tiada platform dijumpai untuk carian ini.</p>
             <button
-              onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }}
+              onClick={() => { handleCategoryChange('All'); setSearchQuery(''); }}
               className="mt-2 text-xs font-semibold text-[#0056D2] hover:underline cursor-pointer"
             >
               Reset tapisan

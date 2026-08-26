@@ -20,16 +20,18 @@ import { AdminTab } from './AdminHeader';
 interface AdminOverviewProps {
   onNavigateTab: (tab: AdminTab) => void;
   customOgImagesCount: number;
+  totalPlatformsCount?: number;
 }
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({
   onNavigateTab,
-  customOgImagesCount
+  customOgImagesCount,
+  totalPlatformsCount
 }) => {
   const { user, isMasterAdmin, getAdminEmails } = useAuth();
   const secondaryAdmins = getAdminEmails();
 
-  const totalPlatforms = PLATFORMS_DATA.length;
+  const totalPlatforms = totalPlatformsCount !== undefined ? totalPlatformsCount : PLATFORMS_DATA.length;
 
   return (
     <div className="space-y-4">

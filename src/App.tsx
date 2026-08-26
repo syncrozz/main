@@ -20,7 +20,7 @@ import { AdminLayout } from './components/admin/AdminLayout';
 import { PlatformFormModal } from './components/admin/PlatformFormModal';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
-import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage } from './utils/ogStorage';
+import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls } from './utils/ogStorage';
 import { 
   getAllPlatforms, 
   savePlatform, 
@@ -51,6 +51,7 @@ function MainAppContent() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [platforms, setPlatforms] = useState<PlatformItem[]>(() => getAllPlatforms());
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<any>('All');
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
@@ -59,6 +60,7 @@ function MainAppContent() {
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>(() => getCustomPlatformUrls());
   const [activeSection, setActiveSection] = useState('home');
 
   // Keep latest snapshot refs for merging
@@ -100,10 +102,14 @@ function MainAppContent() {
     const local = getCustomOgImages();
     setCustomOgImages(local);
 
+    const localUrls = getCustomPlatformUrls();
+    setCustomUrls(localUrls);
+
     // 2. Fetch from PostgreSQL / Cloud SQL API
     fetchPlatformsApi().then((dbPlatforms) => {
       if (dbPlatforms && dbPlatforms.length > 0) {
-        setPlatforms(dbPlatforms);
+        const merged = getAllPlatforms(dbPlatforms, latestDeletedIdsRef.current);
+        setPlatforms(merged);
       }
     });
 
@@ -125,20 +131,25 @@ function MainAppContent() {
 
     // 4. Real-time sync Custom Platforms & Deleted Platforms from Firestore
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
-      latestCustomPlatformsRef.current = firestorePlatforms || [];
-      const merged = getAllPlatforms(latestCustomPlatformsRef.current, latestDeletedIdsRef.current);
-      setPlatforms(merged);
+      if (firestorePlatforms) {
+        latestCustomPlatformsRef.current = firestorePlatforms;
+        const merged = getAllPlatforms(firestorePlatforms, latestDeletedIdsRef.current);
+        setPlatforms(merged);
+      }
     });
 
     const unsubscribeDeleted = subscribeToDeletedDefaultPlatforms((deletedIds) => {
-      latestDeletedIdsRef.current = deletedIds || [];
-      const merged = getAllPlatforms(latestCustomPlatformsRef.current, latestDeletedIdsRef.current);
-      setPlatforms(merged);
+      if (deletedIds) {
+        latestDeletedIdsRef.current = deletedIds;
+        const merged = getAllPlatforms(latestCustomPlatformsRef.current, deletedIds);
+        setPlatforms(merged);
+      }
     });
 
     // 5. Real-time sync Custom Platform URLs
     const unsubscribeUrls = subscribeToCustomPlatformUrls((urls) => {
       if (urls && Object.keys(urls).length > 0) {
+        setCustomUrls((prev) => ({ ...prev, ...urls }));
         try {
           const current = JSON.parse(localStorage.getItem('syncrozz_custom_platform_urls_v1') || '{}');
           localStorage.setItem('syncrozz_custom_platform_urls_v1', JSON.stringify({ ...current, ...urls }));
@@ -327,6 +338,7 @@ function MainAppContent() {
           platforms={platforms}
           onSelectPlatform={(platform) => setSelectedPlatform(platform)}
           customOgImages={customOgImages}
+          customUrls={customUrls}
           onSaveOgImage={handleSaveOgImage}
           onRemoveOgImage={handleRemoveOgImage}
           isAdminMode={isAdminMode}
@@ -334,6 +346,8 @@ function MainAppContent() {
           onOpenAdminModal={() => setIsAdminModalOpen(true)}
           onAdminClick={handleAdminAccess}
           onAddPlatformClick={() => setIsAddPlatformModalOpen(true)}
+          selectedCategory={selectedCategoryFilter}
+          onSelectCategoryFilter={setSelectedCategoryFilter}
         />
 
         {/* 4. Ecosystem Visual ("Flow") */}
@@ -341,7 +355,9 @@ function MainAppContent() {
 
         {/* 5. Categories Section ("Solutions") */}
         <CategoriesSection
+          platforms={platforms}
           onSelectCategory={(category) => {
+            setSelectedCategoryFilter(category as any);
             scrollToSection('platform');
           }}
         />
