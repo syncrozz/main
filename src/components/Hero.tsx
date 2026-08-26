@@ -4,26 +4,24 @@ import {
   Play, 
   CheckCircle2, 
   Sparkles, 
-  QrCode, 
-  Users, 
-  Layers, 
   ShieldCheck, 
   Zap, 
-  ArrowRight,
-  TrendingUp,
-  Clock,
-  Laptop,
-  Smartphone
+  ArrowRight
 } from 'lucide-react';
+import { HeroCarousel } from './HeroCarousel';
+import { CarouselSlide } from '../utils/carouselStorage';
 
 interface HeroProps {
   onExploreClick: () => void;
   onVideoDemoClick: () => void;
+  carouselSlides?: CarouselSlide[];
 }
 
-export const Hero: React.FC<HeroProps> = ({ onExploreClick, onVideoDemoClick }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'attendance' | 'qr'>('dashboard');
-
+export const Hero: React.FC<HeroProps> = ({ 
+  onExploreClick, 
+  onVideoDemoClick,
+  carouselSlides = []
+}) => {
   return (
     <section id="home" className="relative pt-20 pb-10 md:pt-24 md:pb-12 overflow-hidden bg-white">
       
@@ -46,71 +44,64 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onVideoDemoClick }) 
             </span>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold leading-[1.14] text-slate-900 mb-4 tracking-tight">
-              Smart Solutions for <span className="text-[#0056D2]">Education</span>, Productivity & Innovation
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-[1.25] mb-3.5">
+              Smart Solutions for{' '}
+              <span className="text-[#0056D2]">Every Situation</span> ❤️
             </h1>
 
-            {/* Supporting Copy */}
-            <p className="text-sm sm:text-base text-slate-600 mb-5 max-w-xl leading-relaxed font-normal">
-              Menyediakan ekosistem penyelesaian digital praktikal untuk membantu pendidik, institusi, dan organisasi bekerja lebih cekap dan tersusun.
+            {/* Sub-headline */}
+            <p className="text-sm sm:text-base text-slate-600 mb-6 leading-relaxed max-w-2xl">
+              Platform bersepadu yang memudahkan urusan harian pendidik, komuniti, dan organisasi — daripada kehadiran staf, penstrukturan tugas, hingga penerbitan digital yang pantas dan tersusun.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* CTA Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto mb-8">
               <button
-                id="hero-primary-cta"
+                id="hero-explore-btn"
                 onClick={onExploreClick}
-                className="bg-[#0056D2] text-white px-6 py-2.5 sm:px-7 sm:py-3 rounded-xl font-bold shadow-md shadow-blue-200 hover:scale-[1.01] hover:bg-blue-700 active:scale-98 transition-all cursor-pointer inline-flex items-center gap-2 text-sm"
+                className="w-full sm:w-auto px-6 py-3 bg-[#0056D2] hover:bg-[#0045a8] text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2 group cursor-pointer"
               >
-                <span>Terokai Platform</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Terokai Ekosistem</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
 
               <button
-                id="hero-secondary-cta"
+                id="hero-video-demo-btn"
                 onClick={onVideoDemoClick}
-                className="border border-slate-200 text-slate-700 px-6 py-2.5 sm:px-7 sm:py-3 rounded-xl font-bold hover:bg-slate-50 active:scale-98 transition-colors cursor-pointer inline-flex items-center gap-2 text-sm"
+                className="w-full sm:w-auto px-5 py-3 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
               >
-                <Play className="w-3.5 h-3.5 fill-slate-700 text-slate-700" />
-                <span>Lihat Platform</span>
+                <div className="w-6 h-6 rounded-full bg-blue-50 text-[#0056D2] flex items-center justify-center">
+                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                </div>
+                <span>Tonton Video Pengenalan</span>
               </button>
             </div>
 
-            {/* Trust Quick Indicators */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 mt-5 border-t border-slate-100 w-full">
+            {/* Quick Benefits Strip */}
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 w-full max-w-lg">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#0056D2] shrink-0">
-                  <Layers className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900">10+</div>
-                  <div className="text-[10px] text-slate-500 font-medium">Platform</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900">100%</div>
+                  <div className="text-[10px] text-slate-500 font-medium">Keselamatan Data</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#0056D2] shrink-0">
-                  <Users className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#0056D2] flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900">1,000+</div>
-                  <div className="text-[10px] text-slate-500 font-medium">Pengguna</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900">Pantas</div>
+                  <div className="text-[10px] text-slate-500 font-medium">Cloud Terkini</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#0056D2] shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900">99.9%</div>
-                  <div className="text-[10px] text-slate-500 font-medium">Kebolehpercayaan</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#0056D2] shrink-0">
-                  <Zap className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-bold text-slate-900">24/7</div>
@@ -121,86 +112,12 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onVideoDemoClick }) 
 
           </div>
 
-          {/* Right Column: High-Fidelity Multi-Device Ecosystem Mockup */}
+          {/* Right Column: Hero Carousel with Automatic Auto-Swap */}
           <div className="lg:col-span-5 relative flex items-center justify-center">
-            
-            {/* Device Background Halo */}
-            <div className="w-full max-w-[420px] aspect-square bg-gradient-to-br from-blue-50 via-purple-50/50 to-indigo-50/40 rounded-full relative overflow-hidden flex items-center justify-center p-4">
-              
-              {/* Laptop Screen Content (Live Dashboard UI) */}
-              <div className="w-full bg-white rounded-xl shadow-xl border border-slate-100 flex flex-col overflow-hidden text-left font-sans transition-transform hover:scale-[1.01]">
-                
-                {/* Traffic lights header */}
-                <div className="h-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between px-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                  </div>
-                  <div className="text-[9px] font-bold text-slate-400">syncrozz.app</div>
-                  <div className="w-2 h-2"></div>
-                </div>
-
-                {/* Dashboard Inner Screen */}
-                <div className="p-3 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded bg-[#0056D2] text-white flex items-center justify-center font-black text-[9px]">
-                        S
-                      </div>
-                      <span className="font-bold text-xs text-slate-900">SYNCROZZ Hub</span>
-                    </div>
-                    <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                      Live
-                    </span>
-                  </div>
-
-                  {/* Metrics Strip */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                      <div className="text-[9px] text-slate-500 font-medium">Kehadiran Staf</div>
-                      <div className="text-xs sm:text-sm font-black text-[#0056D2]">98.4% Hadir</div>
-                    </div>
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                      <div className="text-[9px] text-slate-500 font-medium">Imbasan QR</div>
-                      <div className="text-xs sm:text-sm font-black text-emerald-600">1,420 Scan</div>
-                    </div>
-                  </div>
-
-                  {/* Platform Quick Strip */}
-                  <div className="grid grid-cols-3 gap-1 pt-0.5">
-                    <div className="p-1.5 bg-blue-50/60 rounded-lg text-center border border-blue-100/60">
-                      <div className="text-[9px] font-bold text-[#0056D2]">Staff Attend</div>
-                      <div className="text-[8px] text-slate-500">Aktif</div>
-                    </div>
-                    <div className="p-1.5 bg-purple-50/60 rounded-lg text-center border border-purple-100/60">
-                      <div className="text-[9px] font-bold text-purple-700">URUSTEAM</div>
-                      <div className="text-[8px] text-slate-500">Aktif</div>
-                    </div>
-                    <div className="p-1.5 bg-emerald-50/60 rounded-lg text-center border border-emerald-100/60">
-                      <div className="text-[9px] font-bold text-emerald-700">SYNC QR</div>
-                      <div className="text-[8px] text-slate-500">Aktif</div>
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Smartphone Mockup */}
-              <div className="absolute bottom-3 right-2 sm:right-3 w-24 sm:w-28 bg-slate-950 rounded-[22px] border-[3px] border-slate-800 shadow-xl p-1.5 animate-float">
-                <div className="w-8 h-0.5 bg-slate-700 mx-auto rounded-full mb-1.5"></div>
-                <div className="bg-white rounded-[14px] p-1.5 text-center border border-slate-100">
-                  <div className="w-8 h-8 mx-auto bg-slate-50 rounded-md border border-slate-200 flex items-center justify-center mb-1">
-                    <QrCode className="w-4 h-4 text-slate-900" />
-                  </div>
-                  <div className="text-[7px] font-bold text-slate-900">QR Disahkan</div>
-                  <div className="text-[6.5px] text-[#0056D2] font-semibold">08:30 AM • GPS OK</div>
-                </div>
-              </div>
-
-            </div>
-
+            <HeroCarousel 
+              slides={carouselSlides}
+              onExplorePlatforms={onExploreClick}
+            />
           </div>
 
         </div>

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { AdminHeader, AdminTab } from './AdminHeader';
 import { AdminOverview } from './AdminOverview';
 import { AdminPlatforms } from './AdminPlatforms';
+import { AdminCarousel } from './AdminCarousel';
 import { AdminUsers } from './AdminUsers';
 import { AdminSettings } from './AdminSettings';
 import { AdminAuditLogs } from './AdminAuditLogs';
 import { PlatformItem } from '../../types';
+import { CarouselSlide } from '../../utils/carouselStorage';
 
 interface AdminDashboardProps {
   onExitToWebsite: () => void;
@@ -15,6 +17,8 @@ interface AdminDashboardProps {
   platforms: PlatformItem[];
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
   onDeletePlatform: (platformId: string) => void;
+  carouselSlides: CarouselSlide[];
+  onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -24,7 +28,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRemoveOgImage,
   platforms,
   onSavePlatform,
-  onDeletePlatform
+  onDeletePlatform,
+  carouselSlides,
+  onSaveCarouselSlides
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
@@ -59,6 +65,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           />
         )}
 
+        {activeTab === 'carousel' && (
+          <AdminCarousel
+            slides={carouselSlides}
+            onSaveSlides={onSaveCarouselSlides}
+          />
+        )}
+
         {activeTab === 'users' && (
           <AdminUsers />
         )}
@@ -75,9 +88,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Admin Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 px-4 sm:px-8 text-center text-xs text-slate-600">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>SYNCROZZ Administrative Control Suite • Version 2.4.0</span>
+          <span>SYNCROZZ Administrative Control Suite • Version 2.5.0</span>
           <span className="font-mono text-[11px] text-slate-600">
-            Protected by Google OAuth 2.0 Identity Services
+            Firebase Firestore & Real-Time Security
           </span>
         </div>
       </footer>

@@ -20,6 +20,7 @@ import { AdminLayout } from './components/admin/AdminLayout';
 import { PlatformFormModal } from './components/admin/PlatformFormModal';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
+import { CarouselSlide, getLocalCarouselSlides, saveLocalCarouselSlides } from './utils/carouselStorage';
 import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls } from './utils/ogStorage';
 import { 
   getAllPlatforms, 
@@ -35,6 +36,8 @@ import {
   subscribeToCustomPlatforms,
   subscribeToCustomPlatformUrls,
   subscribeToDeletedDefaultPlatforms,
+  saveCarouselSlidesToFirestore,
+  subscribeToCarouselSlides,
   logAuditEventToFirestore
 } from './services/firestoreService';
 import {
@@ -61,6 +64,7 @@ function MainAppContent() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [customUrls, setCustomUrls] = useState<Record<string, string>>(() => getCustomPlatformUrls());
+  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>(() => getLocalCarouselSlides());
   const [activeSection, setActiveSection] = useState('home');
 
   // Keep latest snapshot refs for merging
@@ -157,11 +161,20 @@ function MainAppContent() {
       }
     });
 
+    // 6. Real-time sync Carousel Slides from Firestore
+    const unsubscribeCarousel = subscribeToCarouselSlides((firestoreSlides) => {
+      if (firestoreSlides && Array.isArray(firestoreSlides) && firestoreSlides.length > 0) {
+        setCarouselSlides(firestoreSlides);
+        saveLocalCarouselSlides(firestoreSlides);
+      }
+    });
+
     return () => {
       unsubscribeOg();
       unsubscribePlatforms();
       unsubscribeDeleted();
       unsubscribeUrls();
+      unsubscribeCarousel();
     };
   }, []);
 
@@ -292,6 +305,13 @@ function MainAppContent() {
     logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
   };
 
+  const handleSaveCarouselSlides = (updatedSlides: CarouselSlide[]) => {
+    setCarouselSlides(updatedSlides);
+    saveLocalCarouselSlides(updatedSlides);
+    saveCarouselSlidesToFirestore(updatedSlides, user?.email || undefined).catch(() => {});
+    logAuditEventToFirestore('UPDATE_CAROUSEL', user?.email || 'admin', 'SUCCESS', `Hero Carousel updated (${updatedSlides.length} slides).`).catch(() => {});
+  };
+
   // IF ADMIN VIEW: Render Protected Admin Route
   if (isAdminView) {
     return (
@@ -303,6 +323,8 @@ function MainAppContent() {
         platforms={platforms}
         onSavePlatform={handleSavePlatform}
         onDeletePlatform={handleDeletePlatform}
+        carouselSlides={carouselSlides}
+        onSaveCarouselSlides={handleSaveCarouselSlides}
       />
     );
   }
@@ -324,10 +346,11 @@ function MainAppContent() {
 
       {/* Main Content Area */}
       <main className="flex-grow">
-        {/* 1. Hero Section */}
+        {/* 1. Hero Section with Dynamic Auto-Swap Carousel */}
         <Hero
           onExploreClick={() => scrollToSection('platform')}
           onVideoDemoClick={() => setIsVideoDemoOpen(true)}
+          carouselSlides={carouselSlides}
         />
 
         {/* 2. Trust / Value Strip */}

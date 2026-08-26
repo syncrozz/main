@@ -4,6 +4,7 @@ import { AdminLogin } from './AdminLogin';
 import { AccessDenied } from './AccessDenied';
 import { AdminDashboard } from './AdminDashboard';
 import { PlatformItem } from '../../types';
+import { CarouselSlide } from '../../utils/carouselStorage';
 
 interface AdminLayoutProps {
   onExitToWebsite: () => void;
@@ -13,6 +14,8 @@ interface AdminLayoutProps {
   platforms: PlatformItem[];
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
   onDeletePlatform: (platformId: string) => void;
+  carouselSlides: CarouselSlide[];
+  onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -22,7 +25,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onRemoveOgImage,
   platforms,
   onSavePlatform,
-  onDeletePlatform
+  onDeletePlatform,
+  carouselSlides,
+  onSaveCarouselSlides
 }) => {
   const { user, isAuthenticated, isAdmin, isLoading } = useAuth();
 
@@ -70,6 +75,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       platforms={platforms}
       onSavePlatform={onSavePlatform}
       onDeletePlatform={onDeletePlatform}
+      carouselSlides={carouselSlides}
+      onSaveCarouselSlides={onSaveCarouselSlides}
     />
   );
 };

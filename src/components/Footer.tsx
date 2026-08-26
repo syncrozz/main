@@ -296,9 +296,9 @@ export const Footer: React.FC<FooterProps> = ({
                 }
               }}
               className="text-slate-600 hover:text-[#0056D2] transition-colors inline-flex items-center gap-1 cursor-pointer font-medium hover:underline"
-              title="Sokong Inovasi Ini ❤️"
+              title="Support ❤️"
             >
-              <span>Sokong Inovasi Ini ❤️</span>
+              <span>Support ❤️</span>
             </a>
 
             <span className="hidden sm:inline text-slate-300">|</span>

@@ -263,3 +263,37 @@ export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => 
     return () => {};
   }
 }
+
+// 6. Hero Carousel Slides Synchronization
+export async function saveCarouselSlidesToFirestore(slides: any[], userEmail?: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
+    await setDoc(docRef, {
+      slides,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail || 'admin'
+    });
+  } catch (error) {
+    console.error('Error saving carousel slides to Firestore:', error);
+  }
+}
+
+export function subscribeToCarouselSlides(callback: (slides: any[]) => void): () => void {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        callback(data.slides || []);
+      } else {
+        callback([]);
+      }
+    }, (error) => {
+      console.warn('Firestore Carousel Slides notice:', error);
+    });
+  } catch (e) {
+    console.warn('Could not subscribe to carousel slides:', e);
+    return () => {};
+  }
+}
+

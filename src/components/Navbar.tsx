@@ -234,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full py-2.5 px-4 rounded-full text-center font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
                 <Settings className="w-4 h-4 text-[#0056D2]" />
-                <span>Admin Access (Google OAuth 2.0)</span>
+                <span>Akses Mod Pentadbir</span>
               </button>
             )}
 

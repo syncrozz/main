@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import {
   getOrCreateUser,
@@ -25,7 +26,19 @@ const MASTER_ADMIN_EMAIL = 'admin@syncrozz.com';
 const app = express();
 const PORT = 3000;
 
+// CORS & Preflight handling
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-email');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // In-memory fallback for audit logs
 const serverAuditLogs: any[] = [
@@ -393,24 +406,42 @@ app.post('/api/admin/users', requireAdmin, (req, res) => {
 // VITE & STATIC FILE SERVING
 // ----------------------------------------------------
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    let distPath = path.join(process.cwd(), 'dist');
+    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+      if (fs.existsSync(path.join(__dirname, 'index.html'))) {
+        distPath = __dirname;
+      } else if (fs.existsSync(path.join(process.cwd(), 'index.html'))) {
+        distPath = process.cwd();
+      }
+    }
+    
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send(`<!doctype html><html><head><meta charset="UTF-8"><title>SYNCROZZ</title></head><body><div id="root"></div></body></html>`);
+      }
     });
   }
 
-  app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`SYNCROZZ Server running on port ${PORT} with PostgreSQL / Cloud SQL & Google OAuth.`);
-    await seedDatabaseIfEmpty();
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', async () => {
+      console.log(`SYNCROZZ Server running on port ${PORT} with PostgreSQL / Cloud SQL & Google OAuth.`);
+      await seedDatabaseIfEmpty();
+    });
+  }
 }
 
 startServer();
+
+export default app;
+export { app };

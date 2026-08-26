@@ -95,7 +95,7 @@ export const AdminUsers: React.FC = () => {
             <span>Lantik Pentadbir Sekunder (Secondary Admin)</span>
           </h3>
           <p className="text-xs text-slate-500 mb-4">
-            Masukkan emel Google pengguna untuk memberikan hak peranan <strong className="text-slate-700 font-mono">ADMIN</strong>. Pengguna mestilah mengesahkan diri melalui Google Sign-In.
+            Masukkan emel pengguna untuk memberikan hak peranan <strong className="text-slate-700 font-mono">ADMIN</strong> bagi pengurusan platform dan visual Open Graph.
           </p>
 
           <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-3">
@@ -202,7 +202,7 @@ export const AdminUsers: React.FC = () => {
                   <td className="py-3.5 px-4">
                     <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[11px]">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Google OAuth 2.0</span>
+                      <span>Firebase & PIN</span>
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600">

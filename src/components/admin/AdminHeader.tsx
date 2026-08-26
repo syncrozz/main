@@ -9,12 +9,13 @@ import {
   FileText, 
   ExternalLink,
   Crown,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
 
-export type AdminTab = 'overview' | 'platforms' | 'users' | 'settings' | 'logs';
+export type AdminTab = 'overview' | 'platforms' | 'carousel' | 'users' | 'settings' | 'logs';
 
 interface AdminHeaderProps {
   currentTab: AdminTab;
@@ -37,6 +38,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const navItems: { id: AdminTab; label: string; icon: React.ReactNode; requiresMaster?: boolean }[] = [
     { id: 'overview', label: 'Papan Pemuka', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'platforms', label: 'Open Graph & Platform', icon: <Layers className="w-4 h-4" /> },
+    { id: 'carousel', label: 'Hero Carousel', icon: <Sliders className="w-4 h-4" /> },
     { id: 'users', label: 'Pengguna & Peranan', icon: <Users className="w-4 h-4" /> },
     { id: 'settings', label: 'PIN & Keselamatan', icon: <Settings className="w-4 h-4" /> },
     { id: 'logs', label: 'Log Audit', icon: <FileText className="w-4 h-4" /> }
