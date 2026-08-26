@@ -59,7 +59,7 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
     return onSnapshot(colRef, (snapshot) => {
       const result: Record<string, string> = {};
       snapshot.forEach((docSnap) => {
-        if (docSnap.id.startsWith('__config_')) return;
+        if (docSnap.id.startsWith('config_') || docSnap.id.startsWith('__')) return;
         const data = docSnap.data() as FirestoreOgImage;
         if (data.platformId && data.imageUrl) {
           result[data.platformId] = data.imageUrl;
@@ -115,7 +115,7 @@ export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => voi
 // 3. Dynamic Platforms Synchronization with Firestore (using public platformOgImages namespace)
 export async function savePlatformToFirestore(platform: any, userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     const docSnap = await getDoc(docRef);
     let platformsList: any[] = [];
     if (docSnap.exists()) {
@@ -144,7 +144,7 @@ export async function savePlatformToFirestore(platform: any, userEmail?: string)
 
 export async function deletePlatformFromFirestore(platformId: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const platformsList = (docSnap.data().platforms || []).filter((p: any) => p.id !== platformId);
@@ -160,7 +160,7 @@ export async function deletePlatformFromFirestore(platformId: string): Promise<v
 
 export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void): () => void {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_platforms__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         callback(snapshot.data().platforms || []);
@@ -179,7 +179,7 @@ export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void)
 // 4. Custom Platform URLs Synchronization with Firestore
 export async function saveCustomPlatformUrlToFirestore(platformId: string, url: string, userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     const docSnap = await getDoc(docRef);
     let urlsMap: Record<string, string> = {};
     if (docSnap.exists()) {
@@ -198,7 +198,7 @@ export async function saveCustomPlatformUrlToFirestore(platformId: string, url: 
 
 export async function removeCustomPlatformUrlFromFirestore(platformId: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const urlsMap = { ...(docSnap.data().urls || {}) };
@@ -215,7 +215,7 @@ export async function removeCustomPlatformUrlFromFirestore(platformId: string): 
 
 export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, string>) => void): () => void {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_custom_urls__');
+    const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         callback(snapshot.data().urls || {});
@@ -234,7 +234,7 @@ export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, st
 // 5. Deleted Default Platforms Synchronization
 export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], userEmail?: string): Promise<void> {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_deleted_platforms__');
+    const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
     await setDoc(docRef, {
       deletedIds: ids,
       updatedAt: new Date().toISOString(),
@@ -247,7 +247,7 @@ export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], us
 
 export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => void): () => void {
   try {
-    const docRef = doc(db, 'platformOgImages', '__config_deleted_platforms__');
+    const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();

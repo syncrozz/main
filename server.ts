@@ -146,7 +146,7 @@ app.post('/api/auth/google', async (req, res) => {
   });
 });
 
-// 3. User Synchronization Endpoint
+// 3. User Synchronization Endpoint (POST & GET)
 app.post('/api/users/sync', async (req, res) => {
   try {
     const { uid, email, displayName, photoUrl } = req.body;
@@ -157,6 +157,25 @@ app.post('/api/users/sync', async (req, res) => {
     res.json({ success: true, user });
   } catch (error: any) {
     console.error('Failed to sync user:', error);
+    res.status(500).json({ error: error.message || 'Failed to sync user' });
+  }
+});
+
+app.get('/api/users/sync', async (req, res) => {
+  try {
+    const { uid, email, displayName, photoUrl } = req.query;
+    if (uid && email) {
+      const user = await getOrCreateUser(
+        String(uid), 
+        String(email).toLowerCase(), 
+        displayName ? String(displayName) : undefined, 
+        photoUrl ? String(photoUrl) : undefined
+      );
+      return res.json({ success: true, user });
+    }
+    return res.json({ success: true, status: 'ready', message: 'User sync endpoint active' });
+  } catch (error: any) {
+    console.error('Failed to sync user (GET):', error);
     res.status(500).json({ error: error.message || 'Failed to sync user' });
   }
 });
@@ -236,8 +255,8 @@ app.delete('/api/platforms/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// 5. Open Graph Images (PostgreSQL backed)
-app.get('/api/og-images', async (req, res) => {
+// 5. Open Graph Images & Log Images (PostgreSQL backed)
+app.get(['/api/og-images', '/api/log-images'], async (req, res) => {
   try {
     const imagesList = await getAllOgImages();
     const imagesMap: Record<string, string> = {};
@@ -251,7 +270,7 @@ app.get('/api/og-images', async (req, res) => {
   }
 });
 
-app.post('/api/og-images', requireAdmin, async (req, res) => {
+app.post(['/api/og-images', '/api/log-images'], requireAdmin, async (req, res) => {
   try {
     const { platformId, imageUrl } = req.body;
     if (!platformId || !imageUrl) {
@@ -269,7 +288,7 @@ app.post('/api/og-images', requireAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/og-images/:platformId', requireAdmin, async (req, res) => {
+app.delete(['/api/og-images/:platformId', '/api/log-images/:platformId'], requireAdmin, async (req, res) => {
   try {
     const platformId = req.params.platformId;
     await deleteOgImage(platformId);
