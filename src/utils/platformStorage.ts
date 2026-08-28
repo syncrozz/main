@@ -55,7 +55,26 @@ export function saveDeletedDefaultPlatformIds(ids: string[]): void {
 }
 
 /**
+ * Helper to safely extract creation timestamp from a platform
+ */
+export function getPlatformTimestamp(item: PlatformItem): number {
+  if (!item) return 0;
+  if (typeof item.createdAt === 'number' && item.createdAt > 0) return item.createdAt;
+  if (typeof item.createdAt === 'string') {
+    const parsed = new Date(item.createdAt).getTime();
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (typeof item.updatedAt === 'number' && item.updatedAt > 0) return item.updatedAt;
+  if (typeof item.updatedAt === 'string') {
+    const parsed = new Date(item.updatedAt).getTime();
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return 0;
+}
+
+/**
  * Get combined list of all platforms (built-in defaults + custom added, with overrides)
+ * Newly added custom platforms are ALWAYS positioned at the top in newest-first order.
  */
 export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreDeletedIds?: string[]): PlatformItem[] {
   const localCustom = getLocalCustomPlatforms();
@@ -85,31 +104,43 @@ export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreD
     }
   });
 
-  // Start with default platforms that are not deleted
-  const result: PlatformItem[] = [];
-  const processedIds = new Set<string>();
+  const defaultIdSet = new Set(PLATFORMS_DATA.map(p => p.id));
 
+  // Collect brand new custom platforms (not in default PLATFORMS_DATA)
+  const customPlatformsList: PlatformItem[] = [];
+  customMap.forEach((item, id) => {
+    if (!defaultIdSet.has(id) && !deletedIds.has(id)) {
+      customPlatformsList.push(item);
+    }
+  });
+
+  // Sort custom platforms newest-first (descending timestamp).
+  customPlatformsList.sort((a, b) => {
+    const timeA = getPlatformTimestamp(a);
+    const timeB = getPlatformTimestamp(b);
+    if (timeA && timeB) {
+      return timeB - timeA;
+    }
+    if (timeA && !timeB) return -1;
+    if (!timeA && timeB) return 1;
+    return 0;
+  });
+
+  // Built-in default platforms (with any overrides applied from customMap)
+  const defaultPlatformsList: PlatformItem[] = [];
   PLATFORMS_DATA.forEach((def) => {
     if (deletedIds.has(def.id)) {
       return;
     }
     if (customMap.has(def.id)) {
-      result.push(customMap.get(def.id)!);
+      defaultPlatformsList.push(customMap.get(def.id)!);
     } else {
-      result.push(def);
-    }
-    processedIds.add(def.id);
-  });
-
-  // Add brand new custom platforms
-  customMap.forEach((item, id) => {
-    if (!processedIds.has(id) && !deletedIds.has(id)) {
-      result.push(item);
-      processedIds.add(id);
+      defaultPlatformsList.push(def);
     }
   });
 
-  return result;
+  // Combine: Custom/Newly added platforms are ALWAYS positioned at the top, followed by default platforms
+  return [...customPlatformsList, ...defaultPlatformsList];
 }
 
 /**
@@ -123,11 +154,20 @@ export function savePlatform(platform: PlatformItem): PlatformItem[] {
   const index = current.findIndex((p) => p.id === platform.id);
   let updated: PlatformItem[];
 
+  const now = Date.now();
+  const platformWithTimestamp: PlatformItem = {
+    ...platform,
+    createdAt: platform.createdAt || (index >= 0 ? current[index]?.createdAt : undefined) || now,
+    updatedAt: now,
+    isCustom: platform.isCustom ?? true
+  };
+
   if (index >= 0) {
     updated = [...current];
-    updated[index] = platform;
+    updated[index] = platformWithTimestamp;
   } else {
-    updated = [platform, ...current];
+    // New item: Prepend to the top so newest is always first
+    updated = [platformWithTimestamp, ...current];
   }
 
   saveLocalCustomPlatforms(updated);

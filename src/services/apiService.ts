@@ -6,6 +6,17 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
+function getAuthHeaders(userEmail?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  const token = typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_token') : null;
+  const email = userEmail || (typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_email') : null);
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (email) headers['x-user-email'] = email;
+  return headers;
+}
+
 export async function fetchPlatformsApi(): Promise<PlatformItem[] | null> {
   try {
     const res = await fetch('/api/platforms');
@@ -90,21 +101,75 @@ export async function saveOgImageApi(platformId: string, imageUrl: string, token
 }
 
 export async function submitInquiryApi(inquiry: {
+  id?: string;
   name: string;
   email: string;
   organization?: string;
   platformOfInterest?: string;
   message: string;
-}): Promise<boolean> {
+}): Promise<any> {
   try {
     const res = await fetch('/api/inquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(inquiry)
     });
-    return res.ok;
+    if (res.ok) {
+      const data = await res.json();
+      return data?.inquiry || true;
+    }
+    return false;
   } catch (error) {
     console.warn('API submitInquiry notice:', error);
+    return false;
+  }
+}
+
+export async function fetchInquiriesApi(userEmail?: string): Promise<any[]> {
+  try {
+    const headers = getAuthHeaders(userEmail);
+    const res = await fetch('/api/admin/inquiries', { headers });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.inquiries || [];
+  } catch (error) {
+    console.warn('API fetchInquiries notice:', error);
+    return [];
+  }
+}
+
+export async function updateInquiryStatusApi(
+  id: string | number, 
+  status: string, 
+  readOrUserEmail?: boolean | string,
+  userEmail?: string
+): Promise<boolean> {
+  try {
+    const email = typeof readOrUserEmail === 'string' ? readOrUserEmail : userEmail;
+    const read = typeof readOrUserEmail === 'boolean' ? readOrUserEmail : undefined;
+    const headers = getAuthHeaders(email);
+    const res = await fetch(`/api/admin/inquiries/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status, ...(read !== undefined ? { read } : {}) })
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('API updateInquiryStatus notice:', error);
+    return false;
+  }
+}
+
+export async function deleteInquiryApi(id: string | number, userEmail?: string): Promise<boolean> {
+  try {
+    const headers = getAuthHeaders(userEmail);
+    const res = await fetch(`/api/admin/inquiries/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('API deleteInquiry notice:', error);
     return false;
   }
 }

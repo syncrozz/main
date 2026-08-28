@@ -81,6 +81,7 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
     { label: 'Campus', value: 'Campus', icon: <Building2 className="w-4 h-4" /> },
     { label: 'Productivity', value: 'Productivity', icon: <Zap className="w-4 h-4" /> },
     { label: 'Community', value: 'Community', icon: <Users className="w-4 h-4" /> },
+    { label: 'Innovation', value: 'Innovation', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
   const filteredPlatforms = useMemo(() => {
@@ -572,17 +573,6 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
 
                     </div>
 
-                  </div>
-
-                  {/* Card Footer CTA */}
-                  <div 
-                    className="px-4 pb-3.5 pt-0.5 flex items-center justify-between text-xs font-bold text-[#0056D2] group-hover:text-blue-700 cursor-pointer"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      Terokai & Butiran
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                    <span className="text-[9px] text-slate-400 font-normal">1200×630 JPG</span>
                   </div>
 
                 </div>

@@ -11,6 +11,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { submitInquiryApi } from '../services/apiService';
+import { saveInquiryToFirestore, logAuditEvent } from '../services/firestoreService';
+import { getLocalInquiries, saveLocalInquiries } from '../utils/inquiryStorage';
+import { InquiryItem } from '../types';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -54,8 +57,44 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const now = Date.now();
+    const inquiryId = 'inq_' + now + '_' + Math.random().toString(36).substring(2, 7);
+    
+    const newInquiry: InquiryItem = {
+      id: inquiryId,
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || undefined,
+      organization: formData.institution.trim() || undefined,
+      platformInterest: formData.platformInterest,
+      message: formData.message.trim(),
+      status: 'new',
+      read: false,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    // 1. Update local cache immediately
+    const currentList = getLocalInquiries();
+    saveLocalInquiries([newInquiry, ...currentList]);
+
+    // 2. Sync to Firestore for real-time notification
+    try {
+      await saveInquiryToFirestore(newInquiry);
+      await logAuditEvent({
+        eventType: 'NEW_INQUIRY',
+        userEmail: formData.email,
+        status: 'INFO',
+        details: `Pertanyaan baru dari ${formData.name} untuk ${formData.platformInterest}`
+      });
+    } catch (err) {
+      console.warn('Firestore inquiry sync notice:', err);
+    }
+
+    // 3. Sync to PostgreSQL backend
     try {
       await submitInquiryApi({
+        id: inquiryId,
         name: formData.name,
         email: formData.email,
         organization: formData.institution ? `${formData.institution} (${formData.phone})` : formData.phone,
@@ -63,8 +102,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
         message: formData.message,
       });
     } catch (err) {
-      console.warn('Inquiry submission notice:', err);
+      console.warn('Inquiry backend API notice:', err);
     }
+
     setIsSubmitting(false);
     setSubmitted(true);
   };

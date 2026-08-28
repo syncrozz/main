@@ -10,23 +10,27 @@ import {
   ExternalLink,
   Crown,
   Sparkles,
-  Sliders
+  Sliders,
+  Mail,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
 
-export type AdminTab = 'overview' | 'platforms' | 'carousel' | 'users' | 'settings' | 'logs';
+export type AdminTab = 'overview' | 'platforms' | 'carousel' | 'inquiries' | 'users' | 'settings' | 'logs';
 
 interface AdminHeaderProps {
   currentTab: AdminTab;
   onSelectTab: (tab: AdminTab) => void;
   onExitToWebsite: () => void;
+  unreadInquiriesCount?: number;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
   currentTab,
   onSelectTab,
-  onExitToWebsite
+  onExitToWebsite,
+  unreadInquiriesCount = 0
 }) => {
   const { user, isMasterAdmin, logout } = useAuth();
 
@@ -35,10 +39,22 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     onExitToWebsite();
   };
 
-  const navItems: { id: AdminTab; label: string; icon: React.ReactNode; requiresMaster?: boolean }[] = [
+  const navItems: { 
+    id: AdminTab; 
+    label: string; 
+    icon: React.ReactNode; 
+    badgeCount?: number; 
+    requiresMaster?: boolean 
+  }[] = [
     { id: 'overview', label: 'Papan Pemuka', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'platforms', label: 'Open Graph & Platform', icon: <Layers className="w-4 h-4" /> },
     { id: 'carousel', label: 'Hero Carousel', icon: <Sliders className="w-4 h-4" /> },
+    { 
+      id: 'inquiries', 
+      label: 'Inquiries & Mesej', 
+      icon: <Mail className="w-4 h-4" />,
+      badgeCount: unreadInquiriesCount 
+    },
     { id: 'users', label: 'Pengguna & Peranan', icon: <Users className="w-4 h-4" /> },
     { id: 'settings', label: 'PIN & Keselamatan', icon: <Settings className="w-4 h-4" /> },
     { id: 'logs', label: 'Log Audit', icon: <FileText className="w-4 h-4" /> }
@@ -149,12 +165,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <nav className="flex space-x-1 sm:space-x-4 overflow-x-auto py-2 scrollbar-none">
             {navItems.map((item) => {
               const isActive = currentTab === item.id;
+              const hasBadge = (item.badgeCount || 0) > 0;
+
               return (
                 <button
                   key={item.id}
                   id={`admin-tab-${item.id}`}
                   onClick={() => onSelectTab(item.id)}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer relative ${
                     isActive
                       ? 'bg-[#0056D2] text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -162,6 +180,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 >
                   {item.icon}
                   <span>{item.label}</span>
+                  {hasBadge && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white flex items-center gap-0.5 animate-pulse shadow-xs">
+                      <Zap className="w-2.5 h-2.5 fill-current" />
+                      <span>{item.badgeCount}</span>
+                    </span>
+                  )}
                 </button>
               );
             })}

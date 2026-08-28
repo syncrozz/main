@@ -196,6 +196,7 @@ export const PlatformFormModal: React.FC<PlatformFormModalProps> = ({
       return;
     }
 
+    const now = Date.now();
     const platformToSave: PlatformItem = {
       id: cleanId,
       name: name.trim(),
@@ -211,7 +212,10 @@ export const PlatformFormModal: React.FC<PlatformFormModalProps> = ({
       audience: audience.length > 0 ? audience : ['Institusi & Komuniti'],
       url: url.trim() || `https://syncrozz.com/${cleanId}`,
       isPopular: isPopular,
-      status: status
+      status: status,
+      isCustom: initialData ? initialData.isCustom ?? true : true,
+      createdAt: initialData?.createdAt || now,
+      updatedAt: now
     };
 
     onSave(platformToSave, ogDataUrl || undefined);

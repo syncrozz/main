@@ -16,9 +16,27 @@ export interface PlatformItem {
   url?: string;
   isPopular?: boolean;
   status: 'Active' | 'Beta' | 'New';
+  isCustom?: boolean;
+  createdAt?: number | string;
+  updatedAt?: number | string;
   ogImage?: string;
   ogTitle?: string;
   ogDescription?: string;
+}
+
+export interface InquiryItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  platformInterest?: string;
+  message: string;
+  status: 'new' | 'contacted' | 'resolved' | 'archived';
+  read?: boolean;
+  createdAt: number | string;
+  updatedAt?: number | string;
+  notes?: string;
 }
 
 export interface BenefitItem {

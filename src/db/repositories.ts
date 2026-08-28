@@ -37,7 +37,7 @@ const inMemoryPlatforms = new Map<string, any>(
 );
 const inMemoryOgImages = new Map<string, { platformId: string; imageUrl: string; updatedBy: string; updatedAt: Date }>();
 const inMemoryAuditLogs: any[] = [];
-const inMemoryInquiries: any[] = [];
+let inMemoryInquiries: any[] = [];
 
 // User helper
 export async function getOrCreateUser(uid: string, email: string, displayName?: string, photoUrl?: string) {
@@ -318,6 +318,23 @@ export async function getRecentAuditLogs(limitCount = 50) {
 }
 
 // Inquiries
+export async function getContactInquiries() {
+  if (!db || !isSqlConfigured()) {
+    return [...inMemoryInquiries].reverse();
+  }
+
+  try {
+    const results = await db
+      .select()
+      .from(contactInquiries)
+      .orderBy(desc(contactInquiries.createdAt));
+    return results;
+  } catch (error) {
+    console.warn('PostgreSQL getContactInquiries unavailable, using in-memory list.');
+    return [...inMemoryInquiries].reverse();
+  }
+}
+
 export async function createContactInquiry(
   name: string,
   email: string,
@@ -332,6 +349,7 @@ export async function createContactInquiry(
     message,
     organization: organization || null,
     platformOfInterest: platformOfInterest || null,
+    status: 'new',
     createdAt: new Date(),
   };
   inMemoryInquiries.push(record);
@@ -349,6 +367,7 @@ export async function createContactInquiry(
         message,
         organization: organization || null,
         platformOfInterest: platformOfInterest || null,
+        status: 'new',
       })
       .returning();
 
@@ -356,5 +375,50 @@ export async function createContactInquiry(
   } catch (error) {
     console.warn('PostgreSQL createContactInquiry unavailable, saved in memory.');
     return record;
+  }
+}
+
+export async function updateContactInquiryStatus(id: number | string, status: string) {
+  const numericId = typeof id === 'number' ? id : parseInt(id.toString().replace(/\D/g, ''), 10);
+  
+  // update in-memory
+  const memIdx = inMemoryInquiries.findIndex(i => i.id === id || (numericId && i.id === numericId));
+  if (memIdx >= 0) {
+    inMemoryInquiries[memIdx].status = status;
+  }
+
+  if (!db || !isSqlConfigured() || isNaN(numericId)) {
+    return true;
+  }
+
+  try {
+    await db
+      .update(contactInquiries)
+      .set({ status })
+      .where(eq(contactInquiries.id, numericId));
+    return true;
+  } catch (error) {
+    console.warn('PostgreSQL updateContactInquiryStatus failed:', error);
+    return true;
+  }
+}
+
+export async function deleteContactInquiry(id: number | string) {
+  const numericId = typeof id === 'number' ? id : parseInt(id.toString().replace(/\D/g, ''), 10);
+  
+  inMemoryInquiries = inMemoryInquiries.filter(i => i.id !== id && (isNaN(numericId) || i.id !== numericId));
+
+  if (!db || !isSqlConfigured() || isNaN(numericId)) {
+    return true;
+  }
+
+  try {
+    await db
+      .delete(contactInquiries)
+      .where(eq(contactInquiries.id, numericId));
+    return true;
+  } catch (error) {
+    console.warn('PostgreSQL deleteContactInquiry failed:', error);
+    return true;
   }
 }

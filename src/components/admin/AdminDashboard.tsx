@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminHeader, AdminTab } from './AdminHeader';
 import { AdminOverview } from './AdminOverview';
 import { AdminPlatforms } from './AdminPlatforms';
 import { AdminCarousel } from './AdminCarousel';
+import { AdminInquiries } from './AdminInquiries';
 import { AdminUsers } from './AdminUsers';
 import { AdminSettings } from './AdminSettings';
 import { AdminAuditLogs } from './AdminAuditLogs';
-import { PlatformItem } from '../../types';
+import { PlatformItem, InquiryItem } from '../../types';
 import { CarouselSlide } from '../../utils/carouselStorage';
+import { getStoredInquiries, saveStoredInquiries } from '../../utils/inquiryStorage';
+import { 
+  subscribeToInquiries, 
+  updateInquiryStatusInFirestore, 
+  deleteInquiryFromFirestore 
+} from '../../services/firestoreService';
+import { fetchInquiriesApi, updateInquiryStatusApi, deleteInquiryApi } from '../../services/apiService';
 
 interface AdminDashboardProps {
   onExitToWebsite: () => void;
@@ -33,6 +41,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveCarouselSlides
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [inquiries, setInquiries] = useState<InquiryItem[]>(() => getStoredInquiries());
+
+  // Subscribe to real-time inquiries from Firestore + fetch initial from server
+  useEffect(() => {
+    // 1. Initial fetch from API / DB
+    fetchInquiriesApi().then(apiInquiries => {
+      if (apiInquiries && apiInquiries.length > 0) {
+        setInquiries(prev => {
+          // Merge preserving latest
+          const map = new Map<string, InquiryItem>();
+          prev.forEach(item => map.set(item.id, item));
+          apiInquiries.forEach(item => map.set(item.id, item));
+          const merged = Array.from(map.values()).sort((a, b) => {
+            const timeA = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt).getTime();
+            const timeB = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt).getTime();
+            return timeB - timeA;
+          });
+          saveStoredInquiries(merged);
+          return merged;
+        });
+      }
+    }).catch(err => {
+      console.warn('[AdminDashboard] Note fetching inquiries API:', err);
+    });
+
+    // 2. Real-time subscription via Firestore
+    const unsubscribe = subscribeToInquiries((remoteInquiries) => {
+      if (remoteInquiries && remoteInquiries.length > 0) {
+        setInquiries(remoteInquiries);
+        saveStoredInquiries(remoteInquiries);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  const handleUpdateInquiryStatus = async (id: string, status: 'new' | 'in_progress' | 'completed' | 'archived', read?: boolean) => {
+    // Optimistic UI update
+    setInquiries(prev => {
+      const updated = prev.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            status,
+            read: read !== undefined ? read : (status !== 'new')
+          };
+        }
+        return item;
+      });
+      saveStoredInquiries(updated);
+      return updated;
+    });
+
+    // Sync to Firestore & API
+    try {
+      await updateInquiryStatusInFirestore(id, status, read);
+      await updateInquiryStatusApi(id, status, read);
+    } catch (err) {
+      console.error('[AdminDashboard] Failed to sync inquiry status update:', err);
+    }
+  };
+
+  const handleDeleteInquiry = async (id: string) => {
+    // Optimistic UI update
+    setInquiries(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      saveStoredInquiries(updated);
+      return updated;
+    });
+
+    // Sync to Firestore & API
+    try {
+      await deleteInquiryFromFirestore(id);
+      await deleteInquiryApi(id);
+    } catch (err) {
+      console.error('[AdminDashboard] Failed to sync inquiry deletion:', err);
+    }
+  };
+
+  const unreadInquiriesCount = inquiries.filter(item => !item.read || item.status === 'new').length;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
@@ -42,6 +134,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         currentTab={activeTab}
         onSelectTab={setActiveTab}
         onExitToWebsite={onExitToWebsite}
+        unreadInquiriesCount={unreadInquiriesCount}
       />
 
       {/* Main Admin Content Container */}
@@ -51,6 +144,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onNavigateTab={setActiveTab}
             customOgImagesCount={Object.keys(customOgImages).length}
             totalPlatformsCount={platforms.length}
+            inquiries={inquiries}
           />
         )}
 
@@ -69,6 +163,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminCarousel
             slides={carouselSlides}
             onSaveSlides={onSaveCarouselSlides}
+          />
+        )}
+
+        {activeTab === 'inquiries' && (
+          <AdminInquiries
+            inquiries={inquiries}
+            onUpdateInquiryStatus={handleUpdateInquiryStatus}
+            onDeleteInquiry={handleDeleteInquiry}
           />
         )}
 

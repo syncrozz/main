@@ -77,24 +77,36 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
 
 // 2. Audit Logging to Firestore
 export async function logAuditEventToFirestore(
-  eventType: string,
-  userEmail: string,
-  status: 'SUCCESS' | 'DENIED' | 'INFO' | 'WARNING',
-  details: string
+  eventTypeOrObject: string | { eventType: string; userEmail: string; status: 'SUCCESS' | 'DENIED' | 'INFO' | 'WARNING'; details: string },
+  userEmail?: string,
+  status?: 'SUCCESS' | 'DENIED' | 'INFO' | 'WARNING',
+  details?: string
 ): Promise<void> {
   try {
     const colRef = collection(db, 'auditLogs');
-    await addDoc(colRef, {
-      eventType,
-      userEmail,
-      status,
-      details,
-      timestamp: Date.now()
-    });
+    if (typeof eventTypeOrObject === 'object') {
+      await addDoc(colRef, {
+        eventType: eventTypeOrObject.eventType,
+        userEmail: eventTypeOrObject.userEmail,
+        status: eventTypeOrObject.status,
+        details: eventTypeOrObject.details,
+        timestamp: Date.now()
+      });
+    } else {
+      await addDoc(colRef, {
+        eventType: eventTypeOrObject,
+        userEmail: userEmail || 'unknown',
+        status: status || 'INFO',
+        details: details || '',
+        timestamp: Date.now()
+      });
+    }
   } catch (error) {
     console.warn('Error saving audit log to Firestore:', error);
   }
 }
+
+export const logAuditEvent = logAuditEventToFirestore;
 
 export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => void {
   try {
@@ -122,15 +134,18 @@ export async function savePlatformToFirestore(platform: any, userEmail?: string)
       platformsList = docSnap.data().platforms || [];
     }
     const idx = platformsList.findIndex((p) => p.id === platform.id);
+    const nowIso = new Date().toISOString();
+    const existingItem = idx >= 0 ? platformsList[idx] : null;
     const updatedPlatform = {
       ...platform,
-      updatedAt: new Date().toISOString(),
+      createdAt: platform.createdAt || existingItem?.createdAt || nowIso,
+      updatedAt: nowIso,
       updatedBy: userEmail || 'admin'
     };
     if (idx >= 0) {
       platformsList[idx] = updatedPlatform;
     } else {
-      platformsList.push(updatedPlatform);
+      platformsList.unshift(updatedPlatform);
     }
     await setDoc(docRef, {
       platforms: platformsList,
@@ -296,4 +311,125 @@ export function subscribeToCarouselSlides(callback: (slides: any[]) => void): ()
     return () => {};
   }
 }
+
+// 7. Contact Inquiries Synchronization (Real-time sync to all admin tabs)
+export async function saveInquiryToFirestore(inquiry: any): Promise<void> {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_inquiries');
+    const docSnap = await getDoc(docRef);
+    let inquiriesList: any[] = [];
+    if (docSnap.exists()) {
+      inquiriesList = docSnap.data().inquiries || [];
+    }
+    const idx = inquiriesList.findIndex((i: any) => i.id === inquiry.id);
+    const nowIso = new Date().toISOString();
+    const itemToSave = {
+      ...inquiry,
+      createdAt: inquiry.createdAt || nowIso,
+      updatedAt: nowIso,
+      status: inquiry.status || 'new',
+      read: inquiry.read ?? false
+    };
+
+    if (idx >= 0) {
+      inquiriesList[idx] = { ...inquiriesList[idx], ...itemToSave };
+    } else {
+      inquiriesList.unshift(itemToSave);
+    }
+
+    await setDoc(docRef, {
+      inquiries: inquiriesList,
+      lastUpdated: nowIso,
+      lastAction: 'SAVE_INQUIRY'
+    });
+  } catch (error) {
+    console.error('Error saving inquiry to Firestore:', error);
+  }
+}
+
+export function subscribeToInquiries(callback: (inquiries: any[]) => void): () => void {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_inquiries');
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        callback(data.inquiries || []);
+      } else {
+        callback([]);
+      }
+    }, (error) => {
+      console.warn('Firestore Inquiries notice:', error);
+    });
+  } catch (e) {
+    console.warn('Could not subscribe to inquiries:', e);
+    return () => {};
+  }
+}
+
+export async function updateInquiryStatusInFirestore(
+  inquiryId: string, 
+  updatesOrStatus: Record<string, any> | string, 
+  readOrUserEmail?: boolean | string,
+  userEmail?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_inquiries');
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return;
+
+    let updates: Record<string, any> = {};
+    let email = typeof readOrUserEmail === 'string' ? readOrUserEmail : userEmail;
+
+    if (typeof updatesOrStatus === 'string') {
+      updates = { 
+        status: updatesOrStatus, 
+        read: typeof readOrUserEmail === 'boolean' ? readOrUserEmail : (updatesOrStatus !== 'new') 
+      };
+    } else {
+      updates = updatesOrStatus || {};
+    }
+
+    let inquiriesList: any[] = docSnap.data().inquiries || [];
+    inquiriesList = inquiriesList.map((item: any) => {
+      if (item.id === inquiryId) {
+        return {
+          ...item,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+          updatedBy: email || 'admin'
+        };
+      }
+      return item;
+    });
+
+    await setDoc(docRef, {
+      inquiries: inquiriesList,
+      lastUpdated: new Date().toISOString(),
+      lastAction: 'UPDATE_INQUIRY'
+    });
+  } catch (error) {
+    console.error('Error updating inquiry status in Firestore:', error);
+  }
+}
+
+export async function deleteInquiryFromFirestore(inquiryId: string, userEmail?: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'platformOgImages', 'config_inquiries');
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return;
+
+    let inquiriesList: any[] = docSnap.data().inquiries || [];
+    inquiriesList = inquiriesList.filter((item: any) => item.id !== inquiryId);
+
+    await setDoc(docRef, {
+      inquiries: inquiriesList,
+      lastUpdated: new Date().toISOString(),
+      lastAction: 'DELETE_INQUIRY',
+      lastDeletedBy: userEmail || 'admin'
+    });
+  } catch (error) {
+    console.error('Error deleting inquiry from Firestore:', error);
+  }
+}
+
 

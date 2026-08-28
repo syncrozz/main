@@ -14,6 +14,9 @@ import {
   createAuditLog,
   getRecentAuditLogs,
   createContactInquiry,
+  getContactInquiries,
+  updateContactInquiryStatus,
+  deleteContactInquiry,
 } from './src/db/repositories.ts';
 import { seedDatabaseIfEmpty } from './src/db/seed.ts';
 import { isSqlConfigured } from './src/db/index.ts';
@@ -325,6 +328,39 @@ app.post('/api/inquiries', async (req, res) => {
   } catch (error: any) {
     console.error('Failed to submit inquiry:', error);
     return res.status(500).json({ error: error.message || 'Gagal menghantar permohonan.' });
+  }
+});
+
+app.get('/api/admin/inquiries', requireAdmin, async (req, res) => {
+  try {
+    const inquiries = await getContactInquiries();
+    return res.json({ inquiries });
+  } catch (error: any) {
+    console.error('Failed to fetch inquiries:', error);
+    return res.status(500).json({ error: 'Gagal mendapatkan senarai pertanyaan.' });
+  }
+});
+
+app.patch('/api/admin/inquiries/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status } = req.body;
+    await updateContactInquiryStatus(id, status || 'read');
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to update inquiry status:', error);
+    return res.status(500).json({ error: 'Gagal mengemaskini status pertanyaan.' });
+  }
+});
+
+app.delete('/api/admin/inquiries/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    await deleteContactInquiry(id);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete inquiry:', error);
+    return res.status(500).json({ error: 'Gagal memadam pertanyaan.' });
   }
 });
 

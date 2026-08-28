@@ -402,7 +402,7 @@ export const AdminCarousel: React.FC<AdminCarouselProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Pautan / URL (Opsional)
+                    URL
                   </label>
                   <input
                     type="text"
