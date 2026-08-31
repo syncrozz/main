@@ -34,8 +34,11 @@ import { PlatformFormModal } from './PlatformFormModal';
 interface AdminPlatformsProps {
   platforms: PlatformItem[];
   customOgImages: Record<string, string>;
+  customUrls?: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
+  onSaveCustomUrl?: (platformId: string, url: string) => void;
+  onRemoveCustomUrl?: (platformId: string) => void;
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
   onDeletePlatform: (platformId: string) => void;
 }
@@ -43,8 +46,11 @@ interface AdminPlatformsProps {
 export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   platforms,
   customOgImages,
+  customUrls: propCustomUrls,
   onSaveOgImage,
   onRemoveOgImage,
+  onSaveCustomUrl,
+  onRemoveCustomUrl,
   onSavePlatform,
   onDeletePlatform
 }) => {
@@ -64,7 +70,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Custom Platform URLs State
-  const [customUrls, setCustomUrls] = useState<Record<string, string>>({});
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>(() => propCustomUrls || getCustomPlatformUrls());
   const [editingUrl, setEditingUrl] = useState('');
   const [urlSavedMessage, setUrlSavedMessage] = useState(false);
 
@@ -73,6 +79,13 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   const [rowStatuses, setRowStatuses] = useState<Record<string, 'Active' | 'Coming Soon' | 'Beta' | 'Maintenance'>>({});
   const [savedRowIds, setSavedRowIds] = useState<Record<string, boolean>>({});
   const [bulkSaveNotice, setBulkSaveNotice] = useState<string | null>(null);
+
+  // Synchronize when prop changes
+  useEffect(() => {
+    if (propCustomUrls) {
+      setCustomUrls(propCustomUrls);
+    }
+  }, [propCustomUrls]);
 
   // Categories list for filter
   const categoriesList = useMemo(() => {
@@ -162,7 +175,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
     // 1. Save URL to storage & firestore
     if (newUrl) {
-      saveCustomPlatformUrl(platform.id, newUrl);
+      if (onSaveCustomUrl) {
+        onSaveCustomUrl(platform.id, newUrl);
+      } else {
+        saveCustomPlatformUrl(platform.id, newUrl);
+      }
       setCustomUrls(prev => ({ ...prev, [platform.id]: newUrl }));
     }
 
@@ -196,7 +213,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
       if (currentUrl !== originalUrl || currentStatus !== originalStatus) {
         if (currentUrl) {
-          saveCustomPlatformUrl(platform.id, currentUrl);
+          if (onSaveCustomUrl) {
+            onSaveCustomUrl(platform.id, currentUrl);
+          } else {
+            saveCustomPlatformUrl(platform.id, currentUrl);
+          }
           setCustomUrls(prev => ({ ...prev, [platform.id]: currentUrl }));
         }
 
@@ -219,24 +240,43 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     if (!selectedPlatform?.id) return;
     const finalUrl = editingUrl.trim();
     if (finalUrl) {
-      saveCustomPlatformUrl(selectedPlatform.id, finalUrl);
+      if (onSaveCustomUrl) {
+        onSaveCustomUrl(selectedPlatform.id, finalUrl);
+      } else {
+        saveCustomPlatformUrl(selectedPlatform.id, finalUrl);
+      }
       setCustomUrls((prev) => ({ ...prev, [selectedPlatform.id]: finalUrl }));
       setRowUrls(prev => ({ ...prev, [selectedPlatform.id]: finalUrl }));
     } else {
-      removeCustomPlatformUrl(selectedPlatform.id);
+      if (onRemoveCustomUrl) {
+        onRemoveCustomUrl(selectedPlatform.id);
+      } else {
+        removeCustomPlatformUrl(selectedPlatform.id);
+      }
       setCustomUrls((prev) => {
         const next = { ...prev };
         delete next[selectedPlatform.id];
         return next;
       });
     }
+    
+    // Also save platform so full metadata stays synced
+    onSavePlatform({
+      ...selectedPlatform,
+      url: finalUrl || selectedPlatform.url
+    });
+
     setUrlSavedMessage(true);
     setTimeout(() => setUrlSavedMessage(false), 2500);
   };
 
   const handleResetPlatformUrl = () => {
     if (!selectedPlatform?.id) return;
-    removeCustomPlatformUrl(selectedPlatform.id);
+    if (onRemoveCustomUrl) {
+      onRemoveCustomUrl(selectedPlatform.id);
+    } else {
+      removeCustomPlatformUrl(selectedPlatform.id);
+    }
     setCustomUrls((prev) => {
       const next = { ...prev };
       delete next[selectedPlatform.id];
@@ -245,6 +285,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     const defaultUrl = selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
     setEditingUrl(defaultUrl);
     setRowUrls(prev => ({ ...prev, [selectedPlatform.id]: defaultUrl }));
+    
+    onSavePlatform({
+      ...selectedPlatform,
+      url: defaultUrl
+    });
     setUrlSavedMessage(true);
     setTimeout(() => setUrlSavedMessage(false), 2500);
   };

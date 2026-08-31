@@ -9,8 +9,11 @@ import { CarouselSlide } from '../../utils/carouselStorage';
 interface AdminLayoutProps {
   onExitToWebsite: () => void;
   customOgImages: Record<string, string>;
+  customUrls?: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
+  onSaveCustomUrl?: (platformId: string, url: string) => void;
+  onRemoveCustomUrl?: (platformId: string) => void;
   platforms: PlatformItem[];
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
   onDeletePlatform: (platformId: string) => void;
@@ -21,8 +24,11 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onExitToWebsite,
   customOgImages,
+  customUrls = {},
   onSaveOgImage,
   onRemoveOgImage,
+  onSaveCustomUrl,
+  onRemoveCustomUrl,
   platforms,
   onSavePlatform,
   onDeletePlatform,
@@ -70,8 +76,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <AdminDashboard
       onExitToWebsite={onExitToWebsite}
       customOgImages={customOgImages}
+      customUrls={customUrls}
       onSaveOgImage={onSaveOgImage}
       onRemoveOgImage={onRemoveOgImage}
+      onSaveCustomUrl={onSaveCustomUrl}
+      onRemoveCustomUrl={onRemoveCustomUrl}
       platforms={platforms}
       onSavePlatform={onSavePlatform}
       onDeletePlatform={onDeletePlatform}

@@ -55,18 +55,18 @@ export function saveDeletedDefaultPlatformIds(ids: string[]): void {
 }
 
 /**
- * Helper to safely extract creation timestamp from a platform
+ * Helper to safely extract creation or update timestamp from a platform
  */
 export function getPlatformTimestamp(item: PlatformItem): number {
   if (!item) return 0;
-  if (typeof item.createdAt === 'number' && item.createdAt > 0) return item.createdAt;
-  if (typeof item.createdAt === 'string') {
-    const parsed = new Date(item.createdAt).getTime();
-    if (!isNaN(parsed) && parsed > 0) return parsed;
-  }
   if (typeof item.updatedAt === 'number' && item.updatedAt > 0) return item.updatedAt;
   if (typeof item.updatedAt === 'string') {
     const parsed = new Date(item.updatedAt).getTime();
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (typeof item.createdAt === 'number' && item.createdAt > 0) return item.createdAt;
+  if (typeof item.createdAt === 'string') {
+    const parsed = new Date(item.createdAt).getTime();
     if (!isNaN(parsed) && parsed > 0) return parsed;
   }
   return 0;
@@ -75,34 +75,52 @@ export function getPlatformTimestamp(item: PlatformItem): number {
 /**
  * Get combined list of all platforms (built-in defaults + custom added, with overrides)
  * Newly added custom platforms are ALWAYS positioned at the top in newest-first order.
+ *
+ * Real-time synchronization guarantee:
+ * When firestoreCustomList is provided (from live Firebase onSnapshot), Firestore is the
+ * authoritative cloud state.
  */
-export function getAllPlatforms(firestoreCustomList?: PlatformItem[], firestoreDeletedIds?: string[]): PlatformItem[] {
+export function getAllPlatforms(firestoreCustomList?: PlatformItem[] | null, firestoreDeletedIds?: string[] | null): PlatformItem[] {
   const localCustom = getLocalCustomPlatforms();
   const localDeleted = getDeletedDefaultPlatformIds();
   
+  // If Firestore provides deletedIds, synchronize with local storage
   const deletedIds = new Set([
-    ...localDeleted,
-    ...(firestoreDeletedIds || [])
+    ...(firestoreDeletedIds !== undefined && firestoreDeletedIds !== null ? firestoreDeletedIds : localDeleted)
   ]);
 
-  // Combine both firestore and local custom platforms into a map by id
+  // Combine platforms into a map by id
   const customMap = new Map<string, PlatformItem>();
 
-  // 1. Load firestore items
   if (firestoreCustomList && Array.isArray(firestoreCustomList)) {
+    // 1. Live Firestore Cloud State is primary authority
     firestoreCustomList.forEach((item) => {
       if (item && item.id) {
         customMap.set(item.id, item);
       }
     });
-  }
 
-  // 2. Load local items (local items merge seamlessly and take precedence for local edits)
-  localCustom.forEach((item) => {
-    if (item && item.id) {
-      customMap.set(item.id, item);
-    }
-  });
+    // 2. If there are pending local updates with strictly newer timestamp, keep them
+    localCustom.forEach((localItem) => {
+      if (localItem && localItem.id) {
+        const firestoreItem = customMap.get(localItem.id);
+        if (firestoreItem) {
+          const localTime = getPlatformTimestamp(localItem);
+          const firestoreTime = getPlatformTimestamp(firestoreItem);
+          if (localTime > firestoreTime) {
+            customMap.set(localItem.id, localItem);
+          }
+        }
+      }
+    });
+  } else {
+    // Fallback to local storage if Firestore has not emitted yet
+    localCustom.forEach((item) => {
+      if (item && item.id) {
+        customMap.set(item.id, item);
+      }
+    });
+  }
 
   const defaultIdSet = new Set(PLATFORMS_DATA.map(p => p.id));
 

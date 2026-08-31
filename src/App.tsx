@@ -21,11 +21,14 @@ import { PlatformFormModal } from './components/admin/PlatformFormModal';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
 import { CarouselSlide, getLocalCarouselSlides, saveLocalCarouselSlides } from './utils/carouselStorage';
-import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls } from './utils/ogStorage';
+import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from './utils/ogStorage';
 import { 
   getAllPlatforms, 
   savePlatform, 
-  deletePlatform 
+  deletePlatform,
+  saveLocalCustomPlatforms,
+  saveDeletedDefaultPlatformIds,
+  getLocalCustomPlatforms
 } from './utils/platformStorage';
 import { 
   saveOgImageToFirestore, 
@@ -35,6 +38,8 @@ import {
   deletePlatformFromFirestore,
   subscribeToCustomPlatforms,
   subscribeToCustomPlatformUrls,
+  saveCustomPlatformUrlToFirestore,
+  removeCustomPlatformUrlFromFirestore,
   subscribeToDeletedDefaultPlatforms,
   saveCarouselSlidesToFirestore,
   subscribeToCarouselSlides,
@@ -109,27 +114,35 @@ function MainAppContent() {
     const localUrls = getCustomPlatformUrls();
     setCustomUrls(localUrls);
 
-    // 2. Fetch from PostgreSQL / Cloud SQL API
+    // 2. Fetch from PostgreSQL / Cloud SQL API (if configured)
     fetchPlatformsApi().then((dbPlatforms) => {
       if (dbPlatforms && dbPlatforms.length > 0) {
-        const merged = getAllPlatforms(dbPlatforms, latestDeletedIdsRef.current);
-        setPlatforms(merged);
+        // Only override if Cloud SQL returned custom platform items
+        const hasCustomItems = dbPlatforms.some(p => p.isCustom);
+        if (hasCustomItems) {
+          const merged = getAllPlatforms(dbPlatforms, latestDeletedIdsRef.current);
+          setPlatforms(merged);
+        }
       }
-    });
+    }).catch(() => {});
 
     fetchOgImagesApi().then((dbImages) => {
       if (dbImages && Object.keys(dbImages).length > 0) {
         setCustomOgImages((prev) => ({ ...prev, ...dbImages }));
       }
-    });
+    }).catch(() => {});
 
     // 3. Real-time sync OG images from Firestore
     const unsubscribeOg = subscribeToOgImages((firestoreImages) => {
-      if (firestoreImages && Object.keys(firestoreImages).length > 0) {
+      if (firestoreImages) {
         setCustomOgImages((prev) => ({
           ...prev,
           ...firestoreImages
         }));
+        try {
+          const current = getCustomOgImages();
+          localStorage.setItem('syncrozz_custom_og_images_v1', JSON.stringify({ ...current, ...firestoreImages }));
+        } catch {}
       }
     });
 
@@ -137,6 +150,7 @@ function MainAppContent() {
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
       if (firestorePlatforms) {
         latestCustomPlatformsRef.current = firestorePlatforms;
+        saveLocalCustomPlatforms(firestorePlatforms);
         const merged = getAllPlatforms(firestorePlatforms, latestDeletedIdsRef.current);
         setPlatforms(merged);
       }
@@ -145,6 +159,7 @@ function MainAppContent() {
     const unsubscribeDeleted = subscribeToDeletedDefaultPlatforms((deletedIds) => {
       if (deletedIds) {
         latestDeletedIdsRef.current = deletedIds;
+        saveDeletedDefaultPlatformIds(deletedIds);
         const merged = getAllPlatforms(latestCustomPlatformsRef.current, deletedIds);
         setPlatforms(merged);
       }
@@ -152,10 +167,10 @@ function MainAppContent() {
 
     // 5. Real-time sync Custom Platform URLs
     const unsubscribeUrls = subscribeToCustomPlatformUrls((urls) => {
-      if (urls && Object.keys(urls).length > 0) {
+      if (urls) {
         setCustomUrls((prev) => ({ ...prev, ...urls }));
         try {
-          const current = JSON.parse(localStorage.getItem('syncrozz_custom_platform_urls_v1') || '{}');
+          const current = getCustomPlatformUrls();
           localStorage.setItem('syncrozz_custom_platform_urls_v1', JSON.stringify({ ...current, ...urls }));
         } catch {}
       }
@@ -169,12 +184,28 @@ function MainAppContent() {
       }
     });
 
+    // 7. Same-browser cross-tab storage event synchronization (0ms local sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'syncrozz_custom_platforms_v1') {
+        const localPlatforms = getLocalCustomPlatforms();
+        setPlatforms(getAllPlatforms(localPlatforms, latestDeletedIdsRef.current));
+      } else if (e.key === 'syncrozz_custom_og_images_v1') {
+        setCustomOgImages(getCustomOgImages());
+      } else if (e.key === 'syncrozz_custom_platform_urls_v1') {
+        setCustomUrls(getCustomPlatformUrls());
+      } else if (e.key === 'syncrozz_hero_carousel_slides_v1') {
+        setCarouselSlides(getLocalCarouselSlides());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
       unsubscribeOg();
       unsubscribePlatforms();
       unsubscribeDeleted();
       unsubscribeUrls();
       unsubscribeCarousel();
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -285,6 +316,25 @@ function MainAppContent() {
     });
   };
 
+  const handleSaveCustomUrl = (platformId: string, url: string) => {
+    saveCustomPlatformUrl(platformId, url);
+    saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
+    setCustomUrls((prev) => ({
+      ...prev,
+      [platformId]: url
+    }));
+  };
+
+  const handleRemoveCustomUrl = (platformId: string) => {
+    removeCustomPlatformUrl(platformId);
+    removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
+    setCustomUrls((prev) => {
+      const copy = { ...prev };
+      delete copy[platformId];
+      return copy;
+    });
+  };
+
   const handleSavePlatform = (platform: PlatformItem, ogImageDataUrl?: string) => {
     const updated = savePlatform(platform);
     setPlatforms(updated);
@@ -318,8 +368,11 @@ function MainAppContent() {
       <AdminLayout
         onExitToWebsite={navigateToSite}
         customOgImages={customOgImages}
+        customUrls={customUrls}
         onSaveOgImage={handleSaveOgImage}
         onRemoveOgImage={handleRemoveOgImage}
+        onSaveCustomUrl={handleSaveCustomUrl}
+        onRemoveCustomUrl={handleRemoveCustomUrl}
         platforms={platforms}
         onSavePlatform={handleSavePlatform}
         onDeletePlatform={handleDeletePlatform}
