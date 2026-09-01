@@ -103,6 +103,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             </button>
 
             <button
+              id="overview-quick-datatools-btn"
+              onClick={() => onNavigateTab('datatools')}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Data Tools & Sandaran</span>
+            </button>
+
+            <button
               id="overview-quick-users-btn"
               onClick={() => onNavigateTab('users')}
               className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
@@ -115,7 +124,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         
         {/* Inquiries Metric Card */}
         <button
@@ -202,6 +211,29 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             1 Master + {secondaryAdmins.length} Sekunder
           </div>
         </div>
+
+        {/* Data Tools & Sandaran Metric Card */}
+        <button
+          id="overview-card-datatools"
+          onClick={() => onNavigateTab('datatools')}
+          className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition-all text-left group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-700">
+              Data & Sandaran
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <Database className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+            <span>Standard SES</span>
+          </div>
+          <div className="text-[11px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span>CSV, Backup & Audit Siap</span>
+          </div>
+        </button>
 
       </div>
 

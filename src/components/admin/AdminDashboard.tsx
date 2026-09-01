@@ -48,8 +48,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   carouselSlides,
   onSaveCarouselSlides
 }) => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const getInitialTab = (): AdminTab => {
+    try {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('datatools') || hash.includes('data') || hash.includes('backup') || hash.includes('sandaran')) return 'datatools';
+      if (hash.includes('platforms') || hash.includes('og')) return 'platforms';
+      if (hash.includes('inquiries') || hash.includes('messages')) return 'inquiries';
+      if (hash.includes('carousel')) return 'carousel';
+      if (hash.includes('users') || hash.includes('roles')) return 'users';
+      if (hash.includes('settings') || hash.includes('pin')) return 'settings';
+      if (hash.includes('logs') || hash.includes('audit')) return 'logs';
+    } catch {}
+    return 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
   const [inquiries, setInquiries] = useState<InquiryItem[]>(() => getStoredInquiries());
+
+  // Listen to hash changes inside Admin view
+  useEffect(() => {
+    const handleHashSync = () => {
+      const tab = getInitialTab();
+      if (tab) setActiveTab(tab);
+    };
+    window.addEventListener('hashchange', handleHashSync);
+    return () => window.removeEventListener('hashchange', handleHashSync);
+  }, []);
 
   // Subscribe to real-time inquiries from Firestore + fetch initial from server
   useEffect(() => {

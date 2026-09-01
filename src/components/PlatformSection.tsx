@@ -20,7 +20,8 @@ import {
   Check,
   ShieldAlert,
   Info,
-  Plus
+  Plus,
+  Database
 } from 'lucide-react';
 import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem, PlatformCategory } from '../types';
@@ -343,14 +344,26 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={onOpenAdminModal}
-                className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl bg-[#0056D2] text-white text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-[#0056D2] text-white text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span>Hab Pengurusan OG</span>
               </button>
+              {onAdminClick && (
+                <button
+                  onClick={() => {
+                    window.location.hash = '#admin/datatools';
+                    onAdminClick();
+                  }}
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>Data & Sandaran</span>
+                </button>
+              )}
               <button
                 onClick={onToggleAdminMode}
                 className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
