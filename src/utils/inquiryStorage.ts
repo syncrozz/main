@@ -1,4 +1,5 @@
 import { InquiryItem } from '../types';
+import { safeLocalStorageGet, safeLocalStorageSet } from './safeStorage';
 
 const STORAGE_KEY_INQUIRIES = 'syncrozz_inquiries_cache';
 
@@ -7,7 +8,7 @@ const STORAGE_KEY_INQUIRIES = 'syncrozz_inquiries_cache';
  */
 export function getLocalInquiries(): InquiryItem[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_INQUIRIES);
+    const raw = safeLocalStorageGet<string | null>(STORAGE_KEY_INQUIRIES, null);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -15,7 +16,6 @@ export function getLocalInquiries(): InquiryItem[] {
     }
     return [];
   } catch (e) {
-    console.warn('Failed to parse local inquiries:', e);
     return [];
   }
 }
@@ -25,7 +25,7 @@ export function getLocalInquiries(): InquiryItem[] {
  */
 export function saveLocalInquiries(inquiries: InquiryItem[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(sortInquiriesNewest(inquiries)));
+    safeLocalStorageSet(STORAGE_KEY_INQUIRIES, JSON.stringify(sortInquiriesNewest(inquiries)));
   } catch (e) {
     console.warn('Failed to save local inquiries:', e);
   }

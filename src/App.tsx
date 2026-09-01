@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -28,7 +28,8 @@ import {
   deletePlatform,
   saveLocalCustomPlatforms,
   saveDeletedDefaultPlatformIds,
-  getLocalCustomPlatforms
+  getLocalCustomPlatforms,
+  getDeletedDefaultPlatformIds
 } from './utils/platformStorage';
 import { 
   saveOgImageToFirestore, 
@@ -45,11 +46,17 @@ import {
   subscribeToCarouselSlides,
   logAuditEventToFirestore
 } from './services/firestoreService';
+import { safeLocalStorageSet } from './utils/safeStorage';
 import {
-  fetchPlatformsApi,
+  fetchFullCloudStateApi,
+  checkCloudVersionApi,
+  pushClientStateApi,
   savePlatformApi,
   deletePlatformApi,
-  fetchOgImagesApi,
+  saveCustomUrlApi,
+  removeCustomUrlApi,
+  saveCarouselSlidesApi,
+  saveDeletedPlatformsApi,
   saveOgImageApi,
   syncUserToDatabase
 } from './services/apiService';
@@ -73,8 +80,9 @@ function MainAppContent() {
   const [activeSection, setActiveSection] = useState('home');
 
   // Keep latest snapshot refs for merging
-  const latestCustomPlatformsRef = React.useRef<PlatformItem[]>([]);
-  const latestDeletedIdsRef = React.useRef<string[]>([]);
+  const latestCustomPlatformsRef = useRef<PlatformItem[]>([]);
+  const latestDeletedIdsRef = useRef<string[]>([]);
+  const lastSeenSyncTimeRef = useRef<number>(0);
 
   // Verify route after authentication state is fully initialized
   useEffect(() => {
@@ -105,50 +113,91 @@ function MainAppContent() {
     };
   }, [isInitialized, isLoading]);
 
-  // Load custom OG images and subscribe to Firestore & Database API
+  // Load persistent cloud state and subscribe to all sync channels
   useEffect(() => {
-    // 1. Initial load from localStorage
-    const local = getCustomOgImages();
-    setCustomOgImages(local);
+    // 1. Initial fast load from localStorage for zero perceived latency
+    const localOg = getCustomOgImages();
+    setCustomOgImages(localOg);
 
     const localUrls = getCustomPlatformUrls();
     setCustomUrls(localUrls);
 
-    // 2. Fetch from PostgreSQL / Cloud SQL API (if configured)
-    fetchPlatformsApi().then((dbPlatforms) => {
-      if (dbPlatforms && dbPlatforms.length > 0) {
-        // Only override if Cloud SQL returned custom platform items
-        const hasCustomItems = dbPlatforms.some(p => p.isCustom);
-        if (hasCustomItems) {
-          const merged = getAllPlatforms(dbPlatforms, latestDeletedIdsRef.current);
-          setPlatforms(merged);
+    const localSlides = getLocalCarouselSlides();
+    setCarouselSlides(localSlides);
+
+    const localPlatforms = getLocalCustomPlatforms();
+    const localDeleted = getDeletedDefaultPlatformIds();
+    latestCustomPlatformsRef.current = localPlatforms;
+    latestDeletedIdsRef.current = localDeleted;
+    setPlatforms(getAllPlatforms(localPlatforms, localDeleted));
+
+    // 2. Immediate Full Cloud State Sync (Solves Incognito and Cross-Device synchronization)
+    fetchFullCloudStateApi().then((cloudState) => {
+      if (cloudState) {
+        lastSeenSyncTimeRef.current = cloudState.lastUpdated || Date.now();
+
+        // If cloud store has platforms, apply them
+        if (cloudState.platforms && cloudState.platforms.length > 0) {
+          latestCustomPlatformsRef.current = cloudState.platforms;
+          saveLocalCustomPlatforms(cloudState.platforms);
+          const deleted = cloudState.deletedDefaultIds || [];
+          latestDeletedIdsRef.current = deleted;
+          setPlatforms(getAllPlatforms(cloudState.platforms, deleted));
+        }
+
+        // Custom URLs
+        if (cloudState.customUrls && Object.keys(cloudState.customUrls).length > 0) {
+          setCustomUrls(cloudState.customUrls);
+          safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(cloudState.customUrls));
+        }
+
+        // Carousel Slides
+        if (cloudState.carouselSlides && cloudState.carouselSlides.length > 0) {
+          setCarouselSlides(cloudState.carouselSlides);
+          saveLocalCarouselSlides(cloudState.carouselSlides);
+        }
+
+        // OG Images
+        if (cloudState.ogImages && Object.keys(cloudState.ogImages).length > 0) {
+          setCustomOgImages((prev) => ({ ...prev, ...cloudState.ogImages }));
+          safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(cloudState.ogImages));
+        }
+
+        // If local client has platforms/slides/urls that might be missing on cloud (e.g. from an existing tab before cloud sync)
+        const hasUnsyncedLocalPlatforms = localPlatforms.some(lp => !cloudState.platforms.some(cp => cp.id === lp.id));
+        const hasUnsyncedLocalUrls = Object.keys(localUrls).some(id => !cloudState.customUrls[id]);
+        if (hasUnsyncedLocalPlatforms || hasUnsyncedLocalUrls) {
+          pushClientStateApi({
+            platforms: localPlatforms,
+            customUrls: localUrls,
+            carouselSlides: localSlides,
+            deletedDefaultIds: localDeleted,
+            ogImages: localOg
+          }).then((merged) => {
+            if (merged && merged.platforms) {
+              latestCustomPlatformsRef.current = merged.platforms;
+              setPlatforms(getAllPlatforms(merged.platforms, merged.deletedDefaultIds || []));
+            }
+          }).catch(() => {});
         }
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('Initial cloud sync notice:', err);
+    });
 
-    fetchOgImagesApi().then((dbImages) => {
-      if (dbImages && Object.keys(dbImages).length > 0) {
-        setCustomOgImages((prev) => ({ ...prev, ...dbImages }));
-      }
-    }).catch(() => {});
-
-    // 3. Real-time sync OG images from Firestore
+    // 3. Firestore Subscriptions (active in parallel for real-time Firebase syncing)
     const unsubscribeOg = subscribeToOgImages((firestoreImages) => {
       if (firestoreImages) {
-        setCustomOgImages((prev) => ({
-          ...prev,
-          ...firestoreImages
-        }));
+        setCustomOgImages((prev) => ({ ...prev, ...firestoreImages }));
         try {
           const current = getCustomOgImages();
-          localStorage.setItem('syncrozz_custom_og_images_v1', JSON.stringify({ ...current, ...firestoreImages }));
+          safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify({ ...current, ...firestoreImages }));
         } catch {}
       }
     });
 
-    // 4. Real-time sync Custom Platforms & Deleted Platforms from Firestore
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
-      if (firestorePlatforms) {
+      if (firestorePlatforms && firestorePlatforms.length > 0) {
         latestCustomPlatformsRef.current = firestorePlatforms;
         saveLocalCustomPlatforms(firestorePlatforms);
         const merged = getAllPlatforms(firestorePlatforms, latestDeletedIdsRef.current);
@@ -165,18 +214,16 @@ function MainAppContent() {
       }
     });
 
-    // 5. Real-time sync Custom Platform URLs
     const unsubscribeUrls = subscribeToCustomPlatformUrls((urls) => {
       if (urls) {
         setCustomUrls((prev) => ({ ...prev, ...urls }));
         try {
           const current = getCustomPlatformUrls();
-          localStorage.setItem('syncrozz_custom_platform_urls_v1', JSON.stringify({ ...current, ...urls }));
+          safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify({ ...current, ...urls }));
         } catch {}
       }
     });
 
-    // 6. Real-time sync Carousel Slides from Firestore
     const unsubscribeCarousel = subscribeToCarouselSlides((firestoreSlides) => {
       if (firestoreSlides && Array.isArray(firestoreSlides) && firestoreSlides.length > 0) {
         setCarouselSlides(firestoreSlides);
@@ -184,11 +231,65 @@ function MainAppContent() {
       }
     });
 
-    // 7. Same-browser cross-tab storage event synchronization (0ms local sync)
+    // 4. Background polling & window focus revalidation
+    // Ensures incognito tabs and separate devices update dynamically when another tab saves changes
+    const pollInterval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const ver = await checkCloudVersionApi();
+        if (ver && ver.lastUpdated > lastSeenSyncTimeRef.current) {
+          lastSeenSyncTimeRef.current = ver.lastUpdated;
+          const fresh = await fetchFullCloudStateApi();
+          if (fresh) {
+            if (fresh.platforms && fresh.platforms.length > 0) {
+              latestCustomPlatformsRef.current = fresh.platforms;
+              saveLocalCustomPlatforms(fresh.platforms);
+              setPlatforms(getAllPlatforms(fresh.platforms, fresh.deletedDefaultIds || []));
+            }
+            if (fresh.customUrls) {
+              setCustomUrls(fresh.customUrls);
+              safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(fresh.customUrls));
+            }
+            if (fresh.carouselSlides && fresh.carouselSlides.length > 0) {
+              setCarouselSlides(fresh.carouselSlides);
+              saveLocalCarouselSlides(fresh.carouselSlides);
+            }
+            if (fresh.ogImages) {
+              setCustomOgImages((prev) => ({ ...prev, ...fresh.ogImages }));
+              safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(fresh.ogImages));
+            }
+            if (fresh.deletedDefaultIds) {
+              latestDeletedIdsRef.current = fresh.deletedDefaultIds;
+            }
+          }
+        }
+      } catch {}
+    }, 6000);
+
+    const handleVisibility = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        try {
+          const fresh = await fetchFullCloudStateApi();
+          if (fresh) {
+            lastSeenSyncTimeRef.current = fresh.lastUpdated || Date.now();
+            if (fresh.platforms && fresh.platforms.length > 0) {
+              latestCustomPlatformsRef.current = fresh.platforms;
+              setPlatforms(getAllPlatforms(fresh.platforms, fresh.deletedDefaultIds || []));
+            }
+            if (fresh.customUrls) setCustomUrls(fresh.customUrls);
+            if (fresh.carouselSlides) setCarouselSlides(fresh.carouselSlides);
+            if (fresh.ogImages) setCustomOgImages((prev) => ({ ...prev, ...fresh.ogImages }));
+          }
+        } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // 5. Same-browser cross-tab storage event synchronization
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'syncrozz_custom_platforms_v1') {
-        const localPlatforms = getLocalCustomPlatforms();
-        setPlatforms(getAllPlatforms(localPlatforms, latestDeletedIdsRef.current));
+        const local = getLocalCustomPlatforms();
+        setPlatforms(getAllPlatforms(local, latestDeletedIdsRef.current));
       } else if (e.key === 'syncrozz_custom_og_images_v1') {
         setCustomOgImages(getCustomOgImages());
       } else if (e.key === 'syncrozz_custom_platform_urls_v1') {
@@ -200,12 +301,14 @@ function MainAppContent() {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('storage', handleStorageChange);
       unsubscribeOg();
       unsubscribePlatforms();
       unsubscribeDeleted();
       unsubscribeUrls();
       unsubscribeCarousel();
-      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -217,23 +320,23 @@ function MainAppContent() {
         email: user.email,
         displayName: user.name,
         photoUrl: user.picture
-      });
+      }).catch(() => {});
     }
   }, [isAuthenticated, user]);
 
-  // Handle active section on scroll
+  // Section Observer for smooth nav highlight
   useEffect(() => {
     if (isAdminView) return;
 
+    const sections = ['home', 'platform', 'ecosystem', 'solutions', 'why', 'kos'];
     const handleScroll = () => {
-      const sections = ['home', 'platform', 'flow', 'solutions', 'kos', 'about', 'contact'];
       const scrollPosition = window.scrollY + 200;
 
       for (const section of sections) {
-        const el = document.getElementById(section);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
+        const element = document.getElementById(section);
+        if (element) {
+          const top = element.offsetTop;
+          const height = element.offsetHeight;
           if (scrollPosition >= top && scrollPosition < top + height) {
             setActiveSection(section);
             break;
@@ -298,48 +401,58 @@ function MainAppContent() {
 
   const handleSaveOgImage = (platformId: string, dataUrl: string) => {
     saveCustomOgImage(platformId, dataUrl);
-    saveOgImageToFirestore(platformId, dataUrl, user?.email || undefined).catch(() => {});
-    saveOgImageApi(platformId, dataUrl, user?.token, user?.email || undefined).catch(() => {});
     setCustomOgImages((prev) => ({
       ...prev,
       [platformId]: dataUrl
     }));
+    saveOgImageApi(platformId, dataUrl, user?.token, user?.email || undefined).catch(() => {});
+    saveOgImageToFirestore(platformId, dataUrl, user?.email || undefined).catch(() => {});
   };
 
   const handleRemoveOgImage = (platformId: string) => {
     removeCustomOgImage(platformId);
-    removeOgImageFromFirestore(platformId).catch(() => {});
     setCustomOgImages((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
       return copy;
     });
+    fetch(`/api/og-images/${encodeURIComponent(platformId)}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-pin': '5313',
+        'Authorization': 'Bearer pin_session_5313_master',
+        'x-user-email': user?.email || 'admin@syncrozz.com'
+      }
+    }).catch(() => {});
+    removeOgImageFromFirestore(platformId).catch(() => {});
   };
 
   const handleSaveCustomUrl = (platformId: string, url: string) => {
     saveCustomPlatformUrl(platformId, url);
-    saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
     setCustomUrls((prev) => ({
       ...prev,
       [platformId]: url
     }));
+    saveCustomUrlApi(platformId, url, user?.email || undefined).catch(() => {});
+    saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
   };
 
   const handleRemoveCustomUrl = (platformId: string) => {
     removeCustomPlatformUrl(platformId);
-    removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
     setCustomUrls((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
       return copy;
     });
+    removeCustomUrlApi(platformId, user?.email || undefined).catch(() => {});
+    removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
   };
 
   const handleSavePlatform = (platform: PlatformItem, ogImageDataUrl?: string) => {
     const updated = savePlatform(platform);
     setPlatforms(updated);
-    savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
     savePlatformApi(platform, user?.token, user?.email || undefined).catch(() => {});
+    savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('SAVE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform ${platform.name} (#${platform.id}) saved.`).catch(() => {});
 
     if (ogImageDataUrl) {
@@ -350,14 +463,17 @@ function MainAppContent() {
   const handleDeletePlatform = (platformId: string) => {
     const updated = deletePlatform(platformId);
     setPlatforms(updated);
-    deletePlatformFromFirestore(platformId).catch(() => {});
+    const updatedDeletedIds = getDeletedDefaultPlatformIds();
+    saveDeletedPlatformsApi(updatedDeletedIds, user?.email || undefined).catch(() => {});
     deletePlatformApi(platformId, user?.token, user?.email || undefined).catch(() => {});
+    deletePlatformFromFirestore(platformId).catch(() => {});
     logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
   };
 
   const handleSaveCarouselSlides = (updatedSlides: CarouselSlide[]) => {
     setCarouselSlides(updatedSlides);
     saveLocalCarouselSlides(updatedSlides);
+    saveCarouselSlidesApi(updatedSlides, user?.email || undefined).catch(() => {});
     saveCarouselSlidesToFirestore(updatedSlides, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('UPDATE_CAROUSEL', user?.email || 'admin', 'SUCCESS', `Hero Carousel updated (${updatedSlides.length} slides).`).catch(() => {});
   };

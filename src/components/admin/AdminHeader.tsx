@@ -12,12 +12,13 @@ import {
   Sparkles,
   Sliders,
   Mail,
-  Zap
+  Zap,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { SYNCROZZ_PRIMARY_LOGO } from '../../data/syncrozzAssets';
 
-export type AdminTab = 'overview' | 'platforms' | 'carousel' | 'inquiries' | 'users' | 'settings' | 'logs';
+export type AdminTab = 'overview' | 'platforms' | 'carousel' | 'inquiries' | 'datatools' | 'users' | 'settings' | 'logs';
 
 interface AdminHeaderProps {
   currentTab: AdminTab;
@@ -55,6 +56,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       icon: <Mail className="w-4 h-4" />,
       badgeCount: unreadInquiriesCount 
     },
+    { id: 'datatools', label: 'Data & Sandaran', icon: <Database className="w-4 h-4" /> },
     { id: 'users', label: 'Pengguna & Peranan', icon: <Users className="w-4 h-4" /> },
     { id: 'settings', label: 'PIN & Keselamatan', icon: <Settings className="w-4 h-4" /> },
     { id: 'logs', label: 'Log Audit', icon: <FileText className="w-4 h-4" /> }

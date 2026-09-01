@@ -6,6 +6,7 @@ import {
   saveOgImageToFirestore,
   removeOgImageFromFirestore
 } from '../services/firestoreService';
+import { safeLocalStorageGet, safeLocalStorageSet, safeLocalStorageRemove } from './safeStorage';
 
 const STORAGE_KEY = 'syncrozz_custom_og_images_v1';
 const PLATFORM_URLS_STORAGE_KEY = 'syncrozz_custom_platform_urls_v1';
@@ -16,10 +17,9 @@ export function getOfficialMasterOgImage(): string {
 
 export function getCustomPlatformUrls(): Record<string, string> {
   try {
-    const data = localStorage.getItem(PLATFORM_URLS_STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
+    const raw = safeLocalStorageGet<string | null>(PLATFORM_URLS_STORAGE_KEY, null);
+    return raw ? JSON.parse(raw) : {};
   } catch (e) {
-    console.error('Failed to load custom platform URLs from storage', e);
     return {};
   }
 }
@@ -28,10 +28,10 @@ export function saveCustomPlatformUrl(platformId: string, url: string): void {
   try {
     const current = getCustomPlatformUrls();
     current[platformId] = url;
-    localStorage.setItem(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
+    safeLocalStorageSet(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
     saveCustomPlatformUrlToFirestore(platformId, url).catch(() => {});
   } catch (e) {
-    console.error('Failed to save custom platform URL', e);
+    console.warn('Failed to save custom platform URL', e);
   }
 }
 
@@ -39,19 +39,18 @@ export function removeCustomPlatformUrl(platformId: string): void {
   try {
     const current = getCustomPlatformUrls();
     delete current[platformId];
-    localStorage.setItem(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
+    safeLocalStorageSet(PLATFORM_URLS_STORAGE_KEY, JSON.stringify(current));
     removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
   } catch (e) {
-    console.error('Failed to remove custom platform URL', e);
+    console.warn('Failed to remove custom platform URL', e);
   }
 }
 
 export function getCustomOgImages(): Record<string, string> {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
+    const raw = safeLocalStorageGet<string | null>(STORAGE_KEY, null);
+    return raw ? JSON.parse(raw) : {};
   } catch (e) {
-    console.error('Failed to load custom OG images from storage', e);
     return {};
   }
 }
@@ -60,9 +59,9 @@ export function saveCustomOgImage(platformId: string, dataUrl: string): void {
   try {
     const current = getCustomOgImages();
     current[platformId] = dataUrl;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    safeLocalStorageSet(STORAGE_KEY, JSON.stringify(current));
   } catch (e) {
-    console.error('Failed to save custom OG image', e);
+    console.warn('Failed to save custom OG image', e);
   }
 }
 
@@ -70,9 +69,9 @@ export function removeCustomOgImage(platformId: string): void {
   try {
     const current = getCustomOgImages();
     delete current[platformId];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    safeLocalStorageSet(STORAGE_KEY, JSON.stringify(current));
   } catch (e) {
-    console.error('Failed to remove custom OG image', e);
+    console.warn('Failed to remove custom OG image', e);
   }
 }
 

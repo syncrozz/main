@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PlatformItem, PlatformCategory } from '../../types';
 import { generateDefaultOgImage } from '../../utils/ogStorage';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 interface PlatformFormModalProps {
   isOpen: boolean;
@@ -161,18 +162,32 @@ export const PlatformFormModal: React.FC<PlatformFormModalProps> = ({
     setAudience(audience.filter((_, i) => i !== index));
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        if (uploadEvent.target?.result) {
-          const dataUrl = uploadEvent.target.result as string;
-          setCustomOgImagePreview(dataUrl);
-          setOgDataUrl(dataUrl);
+      try {
+        const compressed = await compressImageFile(file, {
+          maxWidth: 1200,
+          maxHeight: 630,
+          quality: 0.85,
+          format: 'image/jpeg'
+        });
+        if (compressed) {
+          setCustomOgImagePreview(compressed);
+          setOgDataUrl(compressed);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn('Fallback file reader:', err);
+        const reader = new FileReader();
+        reader.onload = (uploadEvent) => {
+          if (uploadEvent.target?.result) {
+            const dataUrl = uploadEvent.target.result as string;
+            setCustomOgImagePreview(dataUrl);
+            setOgDataUrl(dataUrl);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 

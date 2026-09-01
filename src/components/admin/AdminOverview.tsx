@@ -14,7 +14,8 @@ import {
   Mail, 
   Zap, 
   Sparkles, 
-  Send 
+  Send,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { PLATFORMS_DATA } from '../../data/platforms';
@@ -372,6 +373,24 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                   </div>
                   <div className="text-[10px] text-slate-500">
                     Urus maklumat kad & Open Graph
+                  </div>
+                </div>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#0056D2]" />
+            </button>
+
+            <button
+              onClick={() => onNavigateTab('datatools')}
+              className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all flex items-center justify-between cursor-pointer group"
+            >
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-[#0056D2]" />
+                <div>
+                  <div className="text-xs font-bold text-slate-800 group-hover:text-[#0056D2]">
+                    Data Tools & Sandaran
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Backup, eksport/import CSV & audit
                   </div>
                 </div>
               </div>

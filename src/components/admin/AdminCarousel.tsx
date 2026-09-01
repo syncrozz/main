@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CarouselSlide, DEFAULT_HERO_CAROUSEL_SLIDES } from '../../utils/carouselStorage';
+import { compressImageFile, compressDataUrl } from '../../utils/imageCompressor';
 
 interface AdminCarouselProps {
   slides: CarouselSlide[];
@@ -76,23 +77,35 @@ export const AdminCarousel: React.FC<AdminCarouselProps> = ({
     setIsFormOpen(true);
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('Sila pilih fail imej yang sah (PNG, JPG, WebP).');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setUploadPreview(dataUrl);
-      setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedUrl = await compressImageFile(file, {
+        maxWidth: 1200,
+        maxHeight: 675,
+        quality: 0.82,
+        format: 'image/webp'
+      });
+      setUploadPreview(compressedUrl);
+      setFormData(prev => ({ ...prev, imageUrl: compressedUrl }));
+    } catch (err) {
+      console.warn('Fallback standard file reader for image:', err);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setUploadPreview(dataUrl);
+        setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleSaveSlide = (e: React.FormEvent) => {
+  const handleSaveSlide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       alert('Sila masukkan tajuk slaid.');
@@ -101,6 +114,18 @@ export const AdminCarousel: React.FC<AdminCarouselProps> = ({
     if (!formData.imageUrl.trim()) {
       alert('Sila masukkan URL imej atau muat naik imej slaid.');
       return;
+    }
+
+    // Compress data URL if needed
+    let finalImageUrl = formData.imageUrl;
+    if (finalImageUrl.startsWith('data:image/') && finalImageUrl.length > 80000) {
+      try {
+        finalImageUrl = await compressDataUrl(finalImageUrl, {
+          maxWidth: 1200,
+          maxHeight: 675,
+          quality: 0.82
+        });
+      } catch {}
     }
 
     let updatedList: CarouselSlide[];
@@ -113,7 +138,7 @@ export const AdminCarousel: React.FC<AdminCarouselProps> = ({
             ...s,
             title: formData.title,
             subtitle: formData.subtitle,
-            imageUrl: formData.imageUrl,
+            imageUrl: finalImageUrl,
             badge: formData.badge,
             linkUrl: formData.linkUrl,
             isActive: formData.isActive
@@ -128,7 +153,7 @@ export const AdminCarousel: React.FC<AdminCarouselProps> = ({
         id: `slide-${Date.now()}`,
         title: formData.title,
         subtitle: formData.subtitle,
-        imageUrl: formData.imageUrl,
+        imageUrl: finalImageUrl,
         badge: formData.badge,
         linkUrl: formData.linkUrl,
         order: slides.length + 1,

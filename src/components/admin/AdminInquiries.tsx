@@ -19,10 +19,12 @@ import {
   Filter,
   UserCheck,
   AlertCircle,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import { InquiryItem } from '../../types';
 import { useAuth } from '../../auth/AuthContext';
+import { exportInquiriesToCsv, downloadFile } from '../../utils/csvDataUtils';
 
 interface AdminInquiriesProps {
   inquiries: InquiryItem[];
@@ -243,6 +245,19 @@ export const AdminInquiries: React.FC<AdminInquiriesProps> = ({
               ))}
             </select>
           )}
+
+          {/* Export CSV Button */}
+          <button
+            onClick={() => {
+              const csv = exportInquiriesToCsv(filteredInquiries);
+              downloadFile(csv, `SYNCROZZ_INQUIRIES_${new Date().toISOString().slice(0, 10)}.csv`);
+            }}
+            title="Eksport data permohonan ke fail CSV"
+            className="px-3 py-2 bg-slate-50 hover:bg-[#0056D2] hover:text-white border border-slate-200 hover:border-[#0056D2] text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Simpan CSV ({filteredInquiries.length})</span>
+          </button>
 
         </div>
       </div>

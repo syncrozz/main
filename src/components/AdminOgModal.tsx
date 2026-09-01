@@ -20,6 +20,7 @@ import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem } from '../types';
 import { generateDefaultOgImage, getOfficialMasterOgImage } from '../utils/ogStorage';
 import { SYNCROZZ_OGI_OFFICIAL } from '../data/syncrozzAssets';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface AdminOgModalProps {
   isOpen: boolean;
@@ -73,24 +74,38 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
 
     // Check if image file
     if (!file.type.startsWith('image/')) {
-      alert('Sila pilih fail imej berformat JPG / JPEG / PNG.');
+      alert('Sila pilih fail imej berformat JPG / JPEG / PNG / WebP.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        onSaveOgImage(currentPlatform.id, dataUrl);
+    try {
+      const compressedDataUrl = await compressImageFile(file, {
+        maxWidth: 1200,
+        maxHeight: 630,
+        quality: 0.85,
+        format: 'image/jpeg'
+      });
+      if (compressedDataUrl) {
+        onSaveOgImage(currentPlatform.id, compressedDataUrl);
         showNotification(`Open Graph Image untuk ${currentPlatform.name} berjaya dimuat naik!`);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Standard file upload fallback:', err);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          onSaveOgImage(currentPlatform.id, dataUrl);
+          showNotification(`Open Graph Image untuk ${currentPlatform.name} berjaya dimuat naik!`);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleApplyOfficialMaster = () => {

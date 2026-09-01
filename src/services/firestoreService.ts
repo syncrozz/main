@@ -2,16 +2,19 @@ import {
   collection, 
   doc, 
   setDoc, 
-  getDocs, 
-  getDoc,
+  getDoc, 
   deleteDoc, 
   onSnapshot, 
-  addDoc,
-  query,
-  orderBy,
-  limit
+  addDoc, 
+  query, 
+  orderBy, 
+  limit, 
+  disableNetwork, 
+  enableNetwork,
+  FirestoreError 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { compressDataUrl } from '../utils/imageCompressor';
 
 export interface FirestoreOgImage {
   platformId: string;
@@ -29,31 +32,80 @@ export interface FirestoreAuditLog {
   ip?: string;
 }
 
+// Circuit breaker for Firestore quota or resource-exhaustion
+let isNetworkDisabled = false;
+let firestoreQuotaExhaustedUntil = 0;
+let reEnableTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function isQuotaExhausted(): boolean {
+  return isNetworkDisabled || Date.now() < firestoreQuotaExhaustedUntil;
+}
+
+function handleFirestoreError(context: string, error: any): void {
+  const errCode = error?.code || '';
+  const errMsg = error?.message || (typeof error === 'string' ? error : '');
+
+  if (
+    errCode === 'resource-exhausted' ||
+    errCode === 'unavailable' ||
+    errMsg.includes('Quota exceeded') ||
+    errMsg.includes('resource-exhausted')
+  ) {
+    firestoreQuotaExhaustedUntil = Date.now() + 5 * 60 * 1000;
+    if (!isNetworkDisabled) {
+      isNetworkDisabled = true;
+      console.warn(`[Firestore] Quota reached during "${context}". Disabling Firestore network to prevent backend overload and falling back to local/server store.`);
+      disableNetwork(db).catch(() => {});
+
+      if (reEnableTimer) clearTimeout(reEnableTimer);
+      reEnableTimer = setTimeout(() => {
+        isNetworkDisabled = false;
+        enableNetwork(db).catch(() => {});
+      }, 5 * 60 * 1000);
+    }
+  } else {
+    console.warn(`[Firestore] Notice during "${context}":`, error?.message || error);
+  }
+}
+
 // 1. Sync Custom OG Images with Firestore
 export async function saveOgImageToFirestore(platformId: string, imageUrl: string, userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
+    let finalImage = imageUrl;
+    if (finalImage.startsWith('data:image/') && finalImage.length > 80000) {
+      try {
+        finalImage = await compressDataUrl(finalImage, { maxWidth: 1200, maxHeight: 630, quality: 0.85 });
+      } catch {}
+    }
+
     const docRef = doc(db, 'platformOgImages', platformId);
     await setDoc(docRef, {
       platformId,
-      imageUrl,
+      imageUrl: finalImage,
       updatedAt: new Date().toISOString(),
       updatedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error saving OG image to Firestore:', error);
+    handleFirestoreError('saveOgImage', error);
   }
 }
 
 export async function removeOgImageFromFirestore(platformId: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', platformId);
     await deleteDoc(docRef);
   } catch (error) {
-    console.error('Error deleting OG image from Firestore:', error);
+    handleFirestoreError('removeOgImage', error);
   }
 }
 
 export function subscribeToOgImages(callback: (images: Record<string, string>) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const colRef = collection(db, 'platformOgImages');
     return onSnapshot(colRef, (snapshot) => {
@@ -67,10 +119,10 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
       });
       callback(result);
     }, (error) => {
-      console.warn('Firestore OG subscription notice:', error);
+      handleFirestoreError('subscribeToOgImages', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to Firestore OG images:', e);
+    handleFirestoreError('subscribeToOgImages init', e);
     return () => {};
   }
 }
@@ -82,6 +134,8 @@ export async function logAuditEventToFirestore(
   status?: 'SUCCESS' | 'DENIED' | 'INFO' | 'WARNING',
   details?: string
 ): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const colRef = collection(db, 'auditLogs');
     if (typeof eventTypeOrObject === 'object') {
@@ -102,13 +156,15 @@ export async function logAuditEventToFirestore(
       });
     }
   } catch (error) {
-    console.warn('Error saving audit log to Firestore:', error);
+    handleFirestoreError('logAuditEvent', error);
   }
 }
 
 export const logAuditEvent = logAuditEventToFirestore;
 
 export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const colRef = collection(db, 'auditLogs');
     const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
@@ -116,16 +172,18 @@ export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => voi
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       callback(logs);
     }, (error) => {
-      console.warn('Firestore Audit subscription notice:', error);
+      handleFirestoreError('subscribeToAuditLogs', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to audit logs:', e);
+    handleFirestoreError('subscribeToAuditLogs init', e);
     return () => {};
   }
 }
 
-// 3. Dynamic Platforms Synchronization with Firestore (using public platformOgImages namespace)
+// 3. Dynamic Platforms Synchronization with Firestore
 export async function savePlatformToFirestore(platform: any, userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     const docSnap = await getDoc(docRef);
@@ -153,11 +211,13 @@ export async function savePlatformToFirestore(platform: any, userEmail?: string)
       updatedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error saving platform to Firestore:', error);
+    handleFirestoreError('savePlatform', error);
   }
 }
 
 export async function deletePlatformFromFirestore(platformId: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     const docSnap = await getDoc(docRef);
@@ -169,11 +229,13 @@ export async function deletePlatformFromFirestore(platformId: string): Promise<v
       });
     }
   } catch (error) {
-    console.error('Error deleting platform from Firestore:', error);
+    handleFirestoreError('deletePlatform', error);
   }
 }
 
 export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     return onSnapshot(docRef, (snapshot) => {
@@ -183,16 +245,18 @@ export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void)
         callback([]);
       }
     }, (error) => {
-      console.warn('Firestore Custom Platforms notice:', error);
+      handleFirestoreError('subscribeToCustomPlatforms', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to custom platforms:', e);
+    handleFirestoreError('subscribeToCustomPlatforms init', e);
     return () => {};
   }
 }
 
 // 4. Custom Platform URLs Synchronization with Firestore
 export async function saveCustomPlatformUrlToFirestore(platformId: string, url: string, userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     const docSnap = await getDoc(docRef);
@@ -207,11 +271,13 @@ export async function saveCustomPlatformUrlToFirestore(platformId: string, url: 
       updatedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error saving custom platform URL to Firestore:', error);
+    handleFirestoreError('saveCustomPlatformUrl', error);
   }
 }
 
 export async function removeCustomPlatformUrlFromFirestore(platformId: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     const docSnap = await getDoc(docRef);
@@ -224,11 +290,13 @@ export async function removeCustomPlatformUrlFromFirestore(platformId: string): 
       });
     }
   } catch (error) {
-    console.error('Error deleting custom platform URL from Firestore:', error);
+    handleFirestoreError('removeCustomPlatformUrl', error);
   }
 }
 
 export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, string>) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     return onSnapshot(docRef, (snapshot) => {
@@ -238,16 +306,18 @@ export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, st
         callback({});
       }
     }, (error) => {
-      console.warn('Firestore Custom URLs notice:', error);
+      handleFirestoreError('subscribeToCustomPlatformUrls', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to custom platform URLs:', e);
+    handleFirestoreError('subscribeToCustomPlatformUrls init', e);
     return () => {};
   }
 }
 
 // 5. Deleted Default Platforms Synchronization
 export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
     await setDoc(docRef, {
@@ -256,11 +326,13 @@ export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], us
       updatedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error saving deleted default platforms to Firestore:', error);
+    handleFirestoreError('saveDeletedDefaultPlatformIds', error);
   }
 }
 
 export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
     return onSnapshot(docRef, (snapshot) => {
@@ -271,29 +343,48 @@ export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => 
         callback([]);
       }
     }, (error) => {
-      console.warn('Firestore Deleted Default Platforms notice:', error);
+      handleFirestoreError('subscribeToDeletedDefaultPlatforms', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to deleted default platforms:', e);
+    handleFirestoreError('subscribeToDeletedDefaultPlatforms init', e);
     return () => {};
   }
 }
 
 // 6. Hero Carousel Slides Synchronization
 export async function saveCarouselSlidesToFirestore(slides: any[], userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
+    // Compress any large base64 slide images to stay under Firestore document limit
+    const processedSlides = await Promise.all(
+      slides.map(async (slide) => {
+        if (slide.imageUrl && slide.imageUrl.startsWith('data:image/') && slide.imageUrl.length > 80000) {
+          try {
+            const compressed = await compressDataUrl(slide.imageUrl, { maxWidth: 1200, maxHeight: 675, quality: 0.8 });
+            return { ...slide, imageUrl: compressed };
+          } catch {
+            return slide;
+          }
+        }
+        return slide;
+      })
+    );
+
     const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
     await setDoc(docRef, {
-      slides,
+      slides: processedSlides,
       updatedAt: new Date().toISOString(),
       updatedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error saving carousel slides to Firestore:', error);
+    handleFirestoreError('saveCarouselSlides', error);
   }
 }
 
 export function subscribeToCarouselSlides(callback: (slides: any[]) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
     return onSnapshot(docRef, (snapshot) => {
@@ -304,16 +395,18 @@ export function subscribeToCarouselSlides(callback: (slides: any[]) => void): ()
         callback([]);
       }
     }, (error) => {
-      console.warn('Firestore Carousel Slides notice:', error);
+      handleFirestoreError('subscribeToCarouselSlides', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to carousel slides:', e);
+    handleFirestoreError('subscribeToCarouselSlides init', e);
     return () => {};
   }
 }
 
 // 7. Contact Inquiries Synchronization (Real-time sync to all admin tabs)
 export async function saveInquiryToFirestore(inquiry: any): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_inquiries');
     const docSnap = await getDoc(docRef);
@@ -343,11 +436,13 @@ export async function saveInquiryToFirestore(inquiry: any): Promise<void> {
       lastAction: 'SAVE_INQUIRY'
     });
   } catch (error) {
-    console.error('Error saving inquiry to Firestore:', error);
+    handleFirestoreError('saveInquiry', error);
   }
 }
 
 export function subscribeToInquiries(callback: (inquiries: any[]) => void): () => void {
+  if (isQuotaExhausted()) return () => {};
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_inquiries');
     return onSnapshot(docRef, (snapshot) => {
@@ -358,10 +453,10 @@ export function subscribeToInquiries(callback: (inquiries: any[]) => void): () =
         callback([]);
       }
     }, (error) => {
-      console.warn('Firestore Inquiries notice:', error);
+      handleFirestoreError('subscribeToInquiries', error);
     });
   } catch (e) {
-    console.warn('Could not subscribe to inquiries:', e);
+    handleFirestoreError('subscribeToInquiries init', e);
     return () => {};
   }
 }
@@ -372,6 +467,8 @@ export async function updateInquiryStatusInFirestore(
   readOrUserEmail?: boolean | string,
   userEmail?: string
 ): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_inquiries');
     const docSnap = await getDoc(docRef);
@@ -408,11 +505,13 @@ export async function updateInquiryStatusInFirestore(
       lastAction: 'UPDATE_INQUIRY'
     });
   } catch (error) {
-    console.error('Error updating inquiry status in Firestore:', error);
+    handleFirestoreError('updateInquiryStatus', error);
   }
 }
 
 export async function deleteInquiryFromFirestore(inquiryId: string, userEmail?: string): Promise<void> {
+  if (isQuotaExhausted()) return;
+
   try {
     const docRef = doc(db, 'platformOgImages', 'config_inquiries');
     const docSnap = await getDoc(docRef);
@@ -428,8 +527,6 @@ export async function deleteInquiryFromFirestore(inquiryId: string, userEmail?: 
       lastDeletedBy: userEmail || 'admin'
     });
   } catch (error) {
-    console.error('Error deleting inquiry from Firestore:', error);
+    handleFirestoreError('deleteInquiry', error);
   }
 }
-
-

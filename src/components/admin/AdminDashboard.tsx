@@ -7,8 +7,10 @@ import { AdminInquiries } from './AdminInquiries';
 import { AdminUsers } from './AdminUsers';
 import { AdminSettings } from './AdminSettings';
 import { AdminAuditLogs } from './AdminAuditLogs';
+import { AdminDataTools } from './AdminDataTools';
 import { PlatformItem, InquiryItem } from '../../types';
 import { CarouselSlide } from '../../utils/carouselStorage';
+import { SyncrozzBackupPayload } from '../../utils/dataSafetyUtils';
 import { getStoredInquiries, saveStoredInquiries } from '../../utils/inquiryStorage';
 import { 
   subscribeToInquiries, 
@@ -180,6 +182,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             inquiries={inquiries}
             onUpdateInquiryStatus={handleUpdateInquiryStatus}
             onDeleteInquiry={handleDeleteInquiry}
+          />
+        )}
+
+        {activeTab === 'datatools' && (
+          <AdminDataTools
+            platforms={platforms}
+            inquiries={inquiries}
+            carouselSlides={carouselSlides}
+            customUrls={customUrls}
+            onSavePlatform={onSavePlatform}
+            onSaveMultiplePlatforms={(platformsToSave) => {
+              platformsToSave.forEach(p => onSavePlatform(p));
+            }}
+            onRestoreBackup={(backup: SyncrozzBackupPayload) => {
+              backup.data.platforms.forEach(p => onSavePlatform(p));
+              if (backup.data.carouselSlides && backup.data.carouselSlides.length > 0) {
+                onSaveCarouselSlides(backup.data.carouselSlides);
+              }
+              if (backup.data.customUrls && onSaveCustomUrl) {
+                Object.entries(backup.data.customUrls).forEach(([id, url]) => {
+                  onSaveCustomUrl(id, url);
+                });
+              }
+            }}
+            onNavigateToPlatforms={() => setActiveTab('platforms')}
+            onNavigateToInquiries={() => setActiveTab('inquiries')}
           />
         )}
 

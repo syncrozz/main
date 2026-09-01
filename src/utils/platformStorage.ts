@@ -1,6 +1,7 @@
 import { PlatformItem } from '../types';
 import { PLATFORMS_DATA } from '../data/platforms';
 import { saveDeletedDefaultPlatformIdsToFirestore } from '../services/firestoreService';
+import { safeLocalStorageGet, safeLocalStorageSet } from './safeStorage';
 
 const CUSTOM_PLATFORMS_STORAGE_KEY = 'syncrozz_custom_platforms_v1';
 const DELETED_DEFAULT_PLATFORMS_KEY = 'syncrozz_deleted_default_platforms_v1';
@@ -10,10 +11,9 @@ const DELETED_DEFAULT_PLATFORMS_KEY = 'syncrozz_deleted_default_platforms_v1';
  */
 export function getLocalCustomPlatforms(): PlatformItem[] {
   try {
-    const data = localStorage.getItem(CUSTOM_PLATFORMS_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const raw = safeLocalStorageGet<string | null>(CUSTOM_PLATFORMS_STORAGE_KEY, null);
+    return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error('Failed to load custom platforms from storage:', e);
     return [];
   }
 }
@@ -23,10 +23,9 @@ export function getLocalCustomPlatforms(): PlatformItem[] {
  */
 export function getDeletedDefaultPlatformIds(): string[] {
   try {
-    const data = localStorage.getItem(DELETED_DEFAULT_PLATFORMS_KEY);
-    return data ? JSON.parse(data) : [];
+    const raw = safeLocalStorageGet<string | null>(DELETED_DEFAULT_PLATFORMS_KEY, null);
+    return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error('Failed to load deleted platform IDs:', e);
     return [];
   }
 }
@@ -36,9 +35,9 @@ export function getDeletedDefaultPlatformIds(): string[] {
  */
 export function saveLocalCustomPlatforms(platforms: PlatformItem[]): void {
   try {
-    localStorage.setItem(CUSTOM_PLATFORMS_STORAGE_KEY, JSON.stringify(platforms));
+    safeLocalStorageSet(CUSTOM_PLATFORMS_STORAGE_KEY, JSON.stringify(platforms));
   } catch (e) {
-    console.error('Failed to save custom platforms to storage:', e);
+    console.warn('Failed to save custom platforms to storage:', e);
   }
 }
 
@@ -47,10 +46,10 @@ export function saveLocalCustomPlatforms(platforms: PlatformItem[]): void {
  */
 export function saveDeletedDefaultPlatformIds(ids: string[]): void {
   try {
-    localStorage.setItem(DELETED_DEFAULT_PLATFORMS_KEY, JSON.stringify(ids));
+    safeLocalStorageSet(DELETED_DEFAULT_PLATFORMS_KEY, JSON.stringify(ids));
     saveDeletedDefaultPlatformIdsToFirestore(ids).catch(() => {});
   } catch (e) {
-    console.error('Failed to save deleted platform IDs:', e);
+    console.warn('Failed to save deleted platform IDs:', e);
   }
 }
 

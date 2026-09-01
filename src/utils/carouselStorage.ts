@@ -1,3 +1,6 @@
+import { safeLocalStorageGet, safeLocalStorageSet } from './safeStorage';
+import { compressDataUrl } from './imageCompressor';
+
 export interface CarouselSlide {
   id: string;
   title: string;
@@ -46,7 +49,7 @@ const CAROUSEL_STORAGE_KEY = 'syncrozz_hero_carousel_slides_v1';
 
 export function getLocalCarouselSlides(): CarouselSlide[] {
   try {
-    const raw = localStorage.getItem(CAROUSEL_STORAGE_KEY);
+    const raw = safeLocalStorageGet<string | null>(CAROUSEL_STORAGE_KEY, null);
     if (!raw) return DEFAULT_HERO_CAROUSEL_SLIDES;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -58,10 +61,27 @@ export function getLocalCarouselSlides(): CarouselSlide[] {
   }
 }
 
+export async function sanitizeAndCompressSlides(slides: CarouselSlide[]): Promise<CarouselSlide[]> {
+  const processed = await Promise.all(
+    slides.map(async (slide) => {
+      if (slide.imageUrl && slide.imageUrl.startsWith('data:image/') && slide.imageUrl.length > 80000) {
+        try {
+          const compressed = await compressDataUrl(slide.imageUrl, { maxWidth: 1200, maxHeight: 675, quality: 0.8 });
+          return { ...slide, imageUrl: compressed };
+        } catch {
+          return slide;
+        }
+      }
+      return slide;
+    })
+  );
+  return processed;
+}
+
 export function saveLocalCarouselSlides(slides: CarouselSlide[]): void {
   try {
-    localStorage.setItem(CAROUSEL_STORAGE_KEY, JSON.stringify(slides));
+    safeLocalStorageSet(CAROUSEL_STORAGE_KEY, JSON.stringify(slides));
   } catch (err) {
-    console.error('Failed to save slides locally:', err);
+    console.warn('Could not save carousel slides to local storage:', err);
   }
 }
