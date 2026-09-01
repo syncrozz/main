@@ -6,11 +6,14 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore Database (using the configured databaseId if present)
-export const db = getFirestore(
-  app, 
-  firebaseConfig.firestoreDatabaseId || undefined
-);
+// Initialize Firestore Database (using the configured databaseId if present and valid)
+const customDbId = firebaseConfig.firestoreDatabaseId && 
+  firebaseConfig.firestoreDatabaseId !== '(default)' && 
+  !firebaseConfig.firestoreDatabaseId.startsWith('ai-studio-main')
+    ? firebaseConfig.firestoreDatabaseId 
+    : undefined;
+
+export const db = customDbId ? getFirestore(app, customDbId) : getFirestore(app);
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
