@@ -32,6 +32,7 @@ import {
 import { PlatformItem } from '../../types';
 import { generateDefaultOgImage, getOfficialMasterOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from '../../utils/ogStorage';
 import { SYNCROZZ_OGI_OFFICIAL } from '../../data/syncrozzAssets';
+import { compressImageFile } from '../../utils/imageCompressor';
 import { useAuth } from '../../auth/AuthContext';
 import { PlatformFormModal } from './PlatformFormModal';
 import { exportPlatformsToCsv, downloadFile, parseRawCsv, validateAndNormalizePlatformCsv } from '../../utils/csvDataUtils';
@@ -370,17 +371,29 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     setTimeout(() => setUrlSavedMessage(false), 2500);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, platformId: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, platformId: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (dataUrl) {
-          onSaveOgImage(platformId, dataUrl);
+      try {
+        const compressed = await compressImageFile(file, {
+          maxWidth: 1200,
+          maxHeight: 630,
+          quality: 0.85,
+          format: 'image/jpeg'
+        });
+        if (compressed) {
+          onSaveOgImage(platformId, compressed);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          if (dataUrl) {
+            onSaveOgImage(platformId, dataUrl);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -1185,7 +1198,12 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
           setPlatformToEdit(null);
         }}
         initialData={platformToEdit}
-        onSave={onSavePlatform}
+        onSave={(platform, ogDataUrl) => {
+          onSavePlatform(platform);
+          if (ogDataUrl) {
+            onSaveOgImage(platform.id, ogDataUrl);
+          }
+        }}
         existingIds={platforms.map(p => p.id)}
       />
 

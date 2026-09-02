@@ -26,6 +26,7 @@ import {
 import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem, PlatformCategory } from '../types';
 import { generateDefaultOgImage } from '../utils/ogStorage';
+import { compressImageFile } from '../utils/imageCompressor';
 import { useAuth } from '../auth/AuthContext';
 
 interface PlatformSectionProps {
@@ -99,23 +100,37 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
     });
   }, [platforms, selectedCategory, searchQuery]);
 
-  const handleCardImageUpload = (platformId: string, file: File) => {
+  const handleCardImageUpload = async (platformId: string, file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Sila muat naik fail imej berformat JPG / JPEG / PNG.');
+      alert('Sila muat naik fail imej berformat JPG / JPEG / PNG / WebP.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        onSaveOgImage(platformId, dataUrl);
+    try {
+      const compressed = await compressImageFile(file, {
+        maxWidth: 1200,
+        maxHeight: 630,
+        quality: 0.85,
+        format: 'image/jpeg'
+      });
+      if (compressed) {
+        onSaveOgImage(platformId, compressed);
         setUploadSuccessId(platformId);
         setTimeout(() => setUploadSuccessId(null), 3000);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          onSaveOgImage(platformId, dataUrl);
+          setUploadSuccessId(platformId);
+          setTimeout(() => setUploadSuccessId(null), 3000);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Render product brand logos faithfully matching the visual identity

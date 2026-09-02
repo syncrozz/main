@@ -21,6 +21,7 @@ import { PlatformFormModal } from './components/admin/PlatformFormModal';
 import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
 import { CarouselSlide, getLocalCarouselSlides, saveLocalCarouselSlides } from './utils/carouselStorage';
+import { compressDataUrl } from './utils/imageCompressor';
 import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from './utils/ogStorage';
 import { 
   getAllPlatforms, 
@@ -163,10 +164,13 @@ function MainAppContent() {
           safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(cloudState.ogImages));
         }
 
-        // If local client has platforms/slides/urls that might be missing on cloud (e.g. from an existing tab before cloud sync)
-        const hasUnsyncedLocalPlatforms = localPlatforms.some(lp => !cloudState.platforms.some(cp => cp.id === lp.id));
-        const hasUnsyncedLocalUrls = Object.keys(localUrls).some(id => !cloudState.customUrls[id]);
-        if (hasUnsyncedLocalPlatforms || hasUnsyncedLocalUrls) {
+        // If local client has platforms/slides/urls/ogImages that might be missing on cloud (e.g. from an existing tab before cloud sync)
+        const hasUnsyncedLocalOg = Object.keys(localOg).length > 0 && Object.keys(localOg).some(id => !cloudState.ogImages?.[id]);
+        const hasUnsyncedLocalPlatforms = localPlatforms.length > 0 && localPlatforms.some(lp => !cloudState.platforms?.some(cp => cp.id === lp.id));
+        const hasUnsyncedLocalUrls = Object.keys(localUrls).length > 0 && Object.keys(localUrls).some(id => !cloudState.customUrls?.[id]);
+        const hasUnsyncedLocalSlides = localSlides.length > 0 && (!cloudState.carouselSlides || cloudState.carouselSlides.length === 0);
+
+        if (hasUnsyncedLocalOg || hasUnsyncedLocalPlatforms || hasUnsyncedLocalUrls || hasUnsyncedLocalSlides) {
           pushClientStateApi({
             platforms: localPlatforms,
             customUrls: localUrls,
@@ -174,9 +178,15 @@ function MainAppContent() {
             deletedDefaultIds: localDeleted,
             ogImages: localOg
           }).then((merged) => {
-            if (merged && merged.platforms) {
-              latestCustomPlatformsRef.current = merged.platforms;
-              setPlatforms(getAllPlatforms(merged.platforms, merged.deletedDefaultIds || []));
+            if (merged) {
+              if (merged.platforms) {
+                latestCustomPlatformsRef.current = merged.platforms;
+                setPlatforms(getAllPlatforms(merged.platforms, merged.deletedDefaultIds || []));
+              }
+              if (merged.ogImages) {
+                setCustomOgImages((prev) => ({ ...prev, ...merged.ogImages }));
+                safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(merged.ogImages));
+              }
             }
           }).catch(() => {});
         }
@@ -399,14 +409,21 @@ function MainAppContent() {
     }
   };
 
-  const handleSaveOgImage = (platformId: string, dataUrl: string) => {
-    saveCustomOgImage(platformId, dataUrl);
+  const handleSaveOgImage = async (platformId: string, dataUrl: string) => {
+    let finalUrl = dataUrl;
+    if (dataUrl.startsWith('data:image/') && dataUrl.length > 80000) {
+      try {
+        finalUrl = await compressDataUrl(dataUrl, { maxWidth: 1200, maxHeight: 630, quality: 0.85 });
+      } catch {}
+    }
+
+    saveCustomOgImage(platformId, finalUrl);
     setCustomOgImages((prev) => ({
       ...prev,
-      [platformId]: dataUrl
+      [platformId]: finalUrl
     }));
-    saveOgImageApi(platformId, dataUrl, user?.token, user?.email || undefined).catch(() => {});
-    saveOgImageToFirestore(platformId, dataUrl, user?.email || undefined).catch(() => {});
+    saveOgImageApi(platformId, finalUrl, user?.token, user?.email || undefined).catch(() => {});
+    saveOgImageToFirestore(platformId, finalUrl, user?.email || undefined).catch(() => {});
   };
 
   const handleRemoveOgImage = (platformId: string) => {

@@ -6,10 +6,9 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore Database (using the configured databaseId if present and valid)
+// Initialize Firestore Database (using the configured databaseId if present)
 const customDbId = firebaseConfig.firestoreDatabaseId && 
-  firebaseConfig.firestoreDatabaseId !== '(default)' && 
-  !firebaseConfig.firestoreDatabaseId.startsWith('ai-studio-main')
+  firebaseConfig.firestoreDatabaseId !== '(default)'
     ? firebaseConfig.firestoreDatabaseId 
     : undefined;
 
