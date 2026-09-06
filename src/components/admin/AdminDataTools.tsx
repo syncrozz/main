@@ -43,7 +43,15 @@ import {
   DuplicateAuditReport,
   SyncrozzBackupPayload
 } from '../../utils/dataSafetyUtils';
-import { getDeletedDefaultPlatformIds } from '../../utils/platformStorage';
+import { 
+  getDeletedDefaultPlatformIds, 
+  getLocalCustomPlatforms 
+} from '../../utils/platformStorage';
+import { getCustomPlatformUrls, getCustomOgImages } from '../../utils/ogStorage';
+import { getLocalCarouselSlides } from '../../utils/carouselStorage';
+import { checkCloudVersionApi, pushClientStateApi } from '../../services/apiService';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext';
 
 interface AdminDataToolsProps {
@@ -58,7 +66,7 @@ interface AdminDataToolsProps {
   onNavigateToInquiries?: () => void;
 }
 
-type ActiveSubTool = 'overview' | 'export' | 'backup' | 'audit' | 'import';
+type ActiveSubTool = 'overview' | 'sync' | 'export' | 'backup' | 'audit' | 'import';
 
 export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
   platforms,
@@ -73,6 +81,112 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeSubTool, setActiveSubTool] = useState<ActiveSubTool>('overview');
+
+  // ----------------------------------------------------
+  // DIAGNOSTIK SINKRONISASI (Cross-Device Sync Diagnostic)
+  // ----------------------------------------------------
+  const [isTestingSync, setIsTestingSync] = useState(false);
+  const [syncTestResults, setSyncTestResults] = useState<{
+    testedAt: string;
+    serverStatus: 'ok' | 'error';
+    serverDetails: string;
+    serverLatencyMs?: number;
+    firestoreStatus: 'ok' | 'not_found' | 'error' | 'untested';
+    firestoreDetails: string;
+    firestoreLatencyMs?: number;
+    localStorageCount: number;
+  } | null>(null);
+  const [isPushingSync, setIsPushingSync] = useState(false);
+
+  const handleRunSyncTest = async () => {
+    setIsTestingSync(true);
+    const results: any = {
+      testedAt: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      serverStatus: 'error',
+      serverDetails: '',
+      firestoreStatus: 'untested',
+      firestoreDetails: '',
+      localStorageCount: platforms.length
+    };
+
+    // 1. Uji Pelayan Sync API
+    const startServer = performance.now();
+    try {
+      const ver = await checkCloudVersionApi();
+      const endServer = performance.now();
+      results.serverLatencyMs = Math.round(endServer - startServer);
+      if (ver) {
+        results.serverStatus = 'ok';
+        results.serverDetails = `Pelayan API Aktif (Versi ${ver.version}, Kemaskini: ${new Date(ver.lastUpdated).toLocaleTimeString()})`;
+      } else {
+        results.serverDetails = 'Pelayan memulangkan respons kosong atau tiada sambungan.';
+      }
+    } catch (e: any) {
+      results.serverDetails = e?.message || 'Gagal menghubungi pelayan backend.';
+    }
+
+    // 2. Uji Pangkalan Data Cloud Firestore
+    const startFs = performance.now();
+    try {
+      const probeDoc = doc(db, 'platformOgImages', 'test_sync_probe');
+      await setDoc(probeDoc, { test: true, timestamp: new Date().toISOString() });
+      const snap = await getDoc(probeDoc);
+      const endFs = performance.now();
+      results.firestoreLatencyMs = Math.round(endFs - startFs);
+      if (snap.exists()) {
+        results.firestoreStatus = 'ok';
+        results.firestoreDetails = 'Firestore bersambung sepenuhnya. Baca dan tulis dokumen berjaya!';
+      } else {
+        results.firestoreStatus = 'error';
+        results.firestoreDetails = 'Dokumen ujian tidak ditemui selepas penulisan.';
+      }
+    } catch (e: any) {
+      const errMsg = e?.message || String(e);
+      const errCode = e?.code || '';
+      if (errCode === 'not-found' || errMsg.includes('NOT_FOUND') || errMsg.includes('does not exist') || errMsg.includes('404')) {
+        results.firestoreStatus = 'not_found';
+        results.firestoreDetails = `Pangkalan data Firestore (ai-studio-main-ae8ef075-73bb-4826-a99c-f0016fdf4745) BELUM wujud di Google Cloud. Oleh itu, peranti ini berfungsi dalam mod storan setempat (localStorage) sahaja.`;
+      } else if (errCode === 'permission-denied' || errMsg.includes('permission-denied')) {
+        results.firestoreStatus = 'error';
+        results.firestoreDetails = `Kebenaran Firestore disekat (Permission Denied). Sila semak firestore.rules.`;
+      } else {
+        results.firestoreStatus = 'error';
+        results.firestoreDetails = `Ralat sambungan Firestore: ${errMsg}`;
+      }
+    }
+
+    setSyncTestResults(results);
+    setIsTestingSync(false);
+  };
+
+  const handleForcePushSync = async () => {
+    setIsPushingSync(true);
+    try {
+      const localCustom = getLocalCustomPlatforms();
+      const localUrls = getCustomPlatformUrls();
+      const localSlides = getLocalCarouselSlides();
+      const localDeleted = getDeletedDefaultPlatformIds();
+      const localOg = getCustomOgImages();
+
+      const merged = await pushClientStateApi({
+        platforms: localCustom,
+        customUrls: localUrls,
+        carouselSlides: localSlides,
+        deletedDefaultIds: localDeleted,
+        ogImages: localOg
+      });
+
+      if (merged) {
+        showNotification('Berjaya menolak data tempatan ke pelayan Cloud! Peranti lain boleh memuatkannya.');
+      } else {
+        showNotification('Gagal menolak data ke pelayan Cloud.');
+      }
+    } catch (e: any) {
+      showNotification(`Ralat: ${e?.message || 'Gagal menyegerakkan data'}`);
+    } finally {
+      setIsPushingSync(false);
+    }
+  };
 
   // Notification / Feedback State
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
@@ -377,6 +491,19 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
               <Upload className="w-3.5 h-3.5" />
               <span>Import CSV</span>
             </button>
+
+            <button
+              id="datatools-btn-sync-diagnostic"
+              onClick={() => setActiveSubTool('sync')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                activeSubTool === 'sync'
+                  ? 'bg-[#0056D2] text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Diagnostik Sync</span>
+            </button>
           </div>
         </div>
 
@@ -403,6 +530,142 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 0. DIAGNOSTIK SINKRONISASI SECTION                                        */}
+      {/* ========================================================================= */}
+      {activeSubTool === 'sync' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-[#0056D2]" />
+                <span>Diagnostik & Ujian Sinkronisasi Merentasi Peranti</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Uji sambungan masa nyata ke Google Cloud Firestore dan Pelayan API untuk menyemak status perkongsian data antara telefon, tablet & komputer.
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveSubTool('overview')}
+              className="text-xs font-bold text-slate-600 hover:text-slate-900 self-start sm:self-auto cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              id="btn-run-sync-test"
+              onClick={handleRunSyncTest}
+              disabled={isTestingSync}
+              className="px-4 py-2.5 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-sm transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isTestingSync ? 'animate-spin' : ''}`} />
+              <span>{isTestingSync ? 'Sedang Menguji Sambungan...' : 'Jalankan Ujian Diagnostik Sekarang'}</span>
+            </button>
+
+            <button
+              id="btn-force-push-sync"
+              onClick={handleForcePushSync}
+              disabled={isPushingSync}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-sm transition-all disabled:opacity-50"
+            >
+              <HardDrive className="w-4 h-4" />
+              <span>{isPushingSync ? 'Sedang Menolak Data...' : 'Paksa Tolak Storan Tempatan ke Cloud (Force Push)'}</span>
+            </button>
+          </div>
+
+          {/* Test Results Display */}
+          {syncTestResults ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                <span>Keputusan Ujian Terakhir: <strong>{syncTestResults.testedAt}</strong></span>
+                <span>Platform Tempatan Peranti Ini: <strong>{syncTestResults.localStorageCount} item</strong></span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Server API Status Card */}
+                <div className={`p-4 rounded-xl border ${
+                  syncTestResults.serverStatus === 'ok' 
+                    ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950' 
+                    : 'bg-red-50/50 border-red-200 text-red-950'
+                }`}>
+                  <div className="flex items-center gap-2 font-extrabold text-sm mb-1.5">
+                    {syncTestResults.serverStatus === 'ok' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                    )}
+                    <span>Pelayan Backend (/api/sync)</span>
+                    {syncTestResults.serverLatencyMs !== undefined && (
+                      <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-white border ml-auto">
+                        {syncTestResults.serverLatencyMs}ms
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-700">
+                    {syncTestResults.serverDetails}
+                  </p>
+                </div>
+
+                {/* 2. Firestore Cloud Database Card */}
+                <div className={`p-4 rounded-xl border ${
+                  syncTestResults.firestoreStatus === 'ok'
+                    ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
+                    : syncTestResults.firestoreStatus === 'not_found'
+                    ? 'bg-amber-50/50 border-amber-200 text-amber-950'
+                    : 'bg-red-50/50 border-red-200 text-red-950'
+                }`}>
+                  <div className="flex items-center gap-2 font-extrabold text-sm mb-1.5">
+                    {syncTestResults.firestoreStatus === 'ok' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : syncTestResults.firestoreStatus === 'not_found' ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                    )}
+                    <span>Google Cloud Firestore</span>
+                    {syncTestResults.firestoreLatencyMs !== undefined && (
+                      <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-white border ml-auto">
+                        {syncTestResults.firestoreLatencyMs}ms
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-700">
+                    {syncTestResults.firestoreDetails}
+                  </p>
+                </div>
+              </div>
+
+              {/* Diagnostic Explainer */}
+              {syncTestResults.firestoreStatus === 'not_found' && (
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs space-y-2">
+                  <div className="font-extrabold flex items-center gap-2 text-sm text-blue-900">
+                    <HelpCircle className="w-4 h-4 text-[#0056D2]" />
+                    <span>Mengapa Data Belum Boleh Segerak Antara Device?</span>
+                  </div>
+                  <p className="leading-relaxed text-slate-700">
+                    Pangkalan data Firestore anda berstatus <strong>404 NOT_FOUND</strong> kerana database belum wujud secara aktif di akaun Google Cloud / Firebase bagi projek ini.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
+                    <li>Setiap kali anda menyimpan atau mengedit platform pada satu peranti, data tersebut selamat disimpan di <code>localStorage</code> peranti berkenaan.</li>
+                    <li>Peranti kedua (telefon pintar / tablet / komputer lain) yang membuka pautan tidak dapat memuat turun perubahan tersebut kerana Firestore Cloud belum aktif.</li>
+                    <li>Untuk penyegerakan awan penuh, pangkalan data Firestore perlu dicipta di Firebase Console atau diluluskan melalui AI Studio setup.</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-6 text-center border border-dashed border-slate-200 rounded-xl space-y-2 text-xs text-slate-500">
+              <Database className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="font-semibold text-slate-700">Klik butang "Jalankan Ujian Diagnostik Sekarang" untuk memulakan ujian sambungan.</p>
+              <p>Sistem akan menghantar paket ujian ke pelayan Cloud Run dan Google Cloud Firestore secara serentak.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 1. SIMPAN CSV SECTION                                                    */}

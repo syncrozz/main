@@ -207,7 +207,7 @@ function MainAppContent() {
     });
 
     const unsubscribePlatforms = subscribeToCustomPlatforms((firestorePlatforms) => {
-      if (firestorePlatforms && firestorePlatforms.length > 0) {
+      if (Array.isArray(firestorePlatforms)) {
         latestCustomPlatformsRef.current = firestorePlatforms;
         saveLocalCustomPlatforms(firestorePlatforms);
         const merged = getAllPlatforms(firestorePlatforms, latestDeletedIdsRef.current);
