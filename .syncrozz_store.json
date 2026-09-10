@@ -1,0 +1,41 @@
+{
+  "version": 5,
+  "lastUpdated": 1789022645324,
+  "platforms": [],
+  "customUrls": {},
+  "carouselSlides": [
+    {
+      "id": "slide-1",
+      "title": "Ekosistem SYNCROZZ Pintar",
+      "subtitle": "Penyelesaian digital integrasi penuh untuk sekolah, institusi dan komuniti.",
+      "imageUrl": "https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.MAINv2.jpg",
+      "badge": "Ekosistem Digital",
+      "linkUrl": "#platform",
+      "order": 1,
+      "isActive": true
+    },
+    {
+      "id": "slide-2",
+      "title": "Staff Attend & Imbasan QR",
+      "subtitle": "Sistem kehadiran GPS & imbasan pantas tanpa perkakasan rumit.",
+      "imageUrl": "https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.ATTEND.jpg",
+      "badge": "Produktiviti & Kehadiran",
+      "linkUrl": "#platform",
+      "order": 2,
+      "isActive": true
+    },
+    {
+      "id": "slide-3",
+      "title": "Pengurusan Tugas & Kolaborasi",
+      "subtitle": "URUSTEAM & buku program digital untuk melancarkan acara dan pentadbiran.",
+      "imageUrl": "https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.URUSTEAM.jpg",
+      "badge": "Urus Pasukan",
+      "linkUrl": "#platform",
+      "order": 3,
+      "isActive": true
+    }
+  ],
+  "deletedDefaultIds": [],
+  "ogImages": {},
+  "inquiries": []
+}

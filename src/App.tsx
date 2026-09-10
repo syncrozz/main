@@ -172,11 +172,11 @@ function MainAppContent() {
 
         if (hasUnsyncedLocalOg || hasUnsyncedLocalPlatforms || hasUnsyncedLocalUrls || hasUnsyncedLocalSlides) {
           pushClientStateApi({
-            platforms: localPlatforms,
-            customUrls: localUrls,
-            carouselSlides: localSlides,
-            deletedDefaultIds: localDeleted,
-            ogImages: localOg
+            platforms: localPlatforms.length > 0 ? localPlatforms : undefined,
+            customUrls: Object.keys(localUrls).length > 0 ? localUrls : undefined,
+            carouselSlides: hasUnsyncedLocalSlides ? localSlides : undefined,
+            deletedDefaultIds: localDeleted.length > 0 ? localDeleted : undefined,
+            ogImages: Object.keys(localOg).length > 0 ? localOg : undefined
           }).then((merged) => {
             if (merged) {
               if (merged.platforms) {

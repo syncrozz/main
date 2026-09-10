@@ -174,23 +174,35 @@ export function setStoreDeletedDefaultIds(ids: string[]): void {
 
 export function mergeStoreClientState(clientState: Partial<CloudStoreData>): CloudStoreData {
   loadCloudStore();
-  if (clientState.platforms && Array.isArray(clientState.platforms)) {
-    memoryStore.platforms = clientState.platforms;
+  if (clientState.platforms && Array.isArray(clientState.platforms) && clientState.platforms.length > 0) {
+    const existingMap = new Map<string, PlatformItem>();
+    memoryStore.platforms.forEach((p) => {
+      if (p && p.id) existingMap.set(p.id, p);
+    });
+    clientState.platforms.forEach((p) => {
+      if (p && p.id) existingMap.set(p.id, p);
+    });
+    memoryStore.platforms = Array.from(existingMap.values());
   }
   if (clientState.customUrls && typeof clientState.customUrls === 'object') {
     memoryStore.customUrls = { ...memoryStore.customUrls, ...clientState.customUrls };
   }
-  if (clientState.carouselSlides && Array.isArray(clientState.carouselSlides)) {
+  if (clientState.carouselSlides && Array.isArray(clientState.carouselSlides) && clientState.carouselSlides.length > 0) {
     memoryStore.carouselSlides = clientState.carouselSlides;
   }
   if (clientState.deletedDefaultIds && Array.isArray(clientState.deletedDefaultIds)) {
     memoryStore.deletedDefaultIds = Array.from(new Set([...memoryStore.deletedDefaultIds, ...clientState.deletedDefaultIds]));
+    memoryStore.platforms = memoryStore.platforms.filter((p) => !memoryStore.deletedDefaultIds.includes(p.id));
   }
   if (clientState.ogImages && typeof clientState.ogImages === 'object') {
     memoryStore.ogImages = { ...memoryStore.ogImages, ...clientState.ogImages };
   }
   if (clientState.inquiries && Array.isArray(clientState.inquiries)) {
-    memoryStore.inquiries = clientState.inquiries;
+    const existingInquiriesMap = new Map(memoryStore.inquiries.map((i: any) => [i.id, i]));
+    clientState.inquiries.forEach((inq: any) => {
+      if (inq && inq.id) existingInquiriesMap.set(inq.id, inq);
+    });
+    memoryStore.inquiries = Array.from(existingInquiriesMap.values());
   }
 
   memoryStore.version += 1;
