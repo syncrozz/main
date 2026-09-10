@@ -21,10 +21,12 @@ interface AdminLayoutProps {
   onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
 }
 
+const EMPTY_CUSTOM_URLS: Record<string, string> = {};
+
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onExitToWebsite,
   customOgImages,
-  customUrls = {},
+  customUrls = EMPTY_CUSTOM_URLS,
   onSaveOgImage,
   onRemoveOgImage,
   onSaveCustomUrl,

@@ -53,10 +53,12 @@ interface AdminPlatformsProps {
   onDeletePlatform: (platformId: string) => void;
 }
 
+const EMPTY_CUSTOM_URLS: Record<string, string> = {};
+
 export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   platforms,
   customOgImages,
-  customUrls: propCustomUrls,
+  customUrls: propCustomUrls = EMPTY_CUSTOM_URLS,
   onSaveOgImage,
   onRemoveOgImage,
   onSaveCustomUrl,
@@ -69,7 +71,11 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   // View mode: 'list' (unified table/list editor) or 'studio' (2-column detail & OG studio)
   const [viewMode, setViewMode] = useState<'list' | 'studio'>('list');
   
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem>(platforms[0] || {} as PlatformItem);
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string>(() => platforms[0]?.id || '');
+  const selectedPlatform = useMemo(() => {
+    return platforms.find(p => p.id === selectedPlatformId) || platforms[0] || ({} as PlatformItem);
+  }, [platforms, selectedPlatformId]);
+
   const [copiedCode, setCopiedCode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
@@ -79,12 +85,16 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   const [platformToEdit, setPlatformToEdit] = useState<PlatformItem | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Custom Platform URLs State
-  const [customUrls, setCustomUrls] = useState<Record<string, string>>(() => propCustomUrls || getCustomPlatformUrls());
+  // Custom Platform URLs State (Optimistic local overrides + prop)
+  const [localCustomUrls, setLocalCustomUrls] = useState<Record<string, string>>({});
+  const customUrls = useMemo(() => {
+    return { ...(propCustomUrls || getCustomPlatformUrls()), ...localCustomUrls };
+  }, [propCustomUrls, localCustomUrls]);
+
   const [editingUrl, setEditingUrl] = useState('');
   const [urlSavedMessage, setUrlSavedMessage] = useState(false);
 
-  // Unified List In-line edits state (for bulk or quick row editing)
+  // Unified List In-line edits state (for user-modified row edits)
   const [rowUrls, setRowUrls] = useState<Record<string, string>>({});
   const [rowStatuses, setRowStatuses] = useState<Record<string, 'Active' | 'Coming Soon' | 'Beta' | 'Maintenance'>>({});
   const [savedRowIds, setSavedRowIds] = useState<Record<string, boolean>>({});
@@ -157,13 +167,6 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     e.target.value = '';
   };
 
-  // Synchronize when prop changes
-  useEffect(() => {
-    if (propCustomUrls) {
-      setCustomUrls(propCustomUrls);
-    }
-  }, [propCustomUrls]);
-
   // Categories list for filter
   const categoriesList = useMemo(() => {
     const set = new Set<string>();
@@ -173,41 +176,13 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     return Array.from(set);
   }, [platforms]);
 
-  // Keep selectedPlatform valid if platforms array changes
-  useEffect(() => {
-    if (!selectedPlatform?.id && platforms.length > 0) {
-      setSelectedPlatform(platforms[0]);
-    } else if (selectedPlatform?.id) {
-      const match = platforms.find(p => p.id === selectedPlatform.id);
-      if (match) {
-        setSelectedPlatform(match);
-      } else if (platforms.length > 0) {
-        setSelectedPlatform(platforms[0]);
-      }
-    }
-  }, [platforms, selectedPlatform?.id]);
-
-  useEffect(() => {
-    const urls = getCustomPlatformUrls();
-    setCustomUrls(urls);
-    
-    // Initialize rowUrls & rowStatuses
-    const initialUrls: Record<string, string> = {};
-    const initialStatuses: Record<string, any> = {};
-    platforms.forEach(p => {
-      initialUrls[p.id] = urls[p.id] || p.url || `https://syncrozz.com/${p.id}`;
-      initialStatuses[p.id] = p.status || 'Active';
-    });
-    setRowUrls(initialUrls);
-    setRowStatuses(initialStatuses);
-  }, [platforms]);
-
+  // Sync editingUrl whenever the selected platform ID changes
   useEffect(() => {
     if (selectedPlatform?.id) {
       const activeUrl = customUrls[selectedPlatform.id] || selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
       setEditingUrl(activeUrl);
     }
-  }, [selectedPlatform, customUrls]);
+  }, [selectedPlatform?.id]);
 
   const currentCustomImage = selectedPlatform?.id ? customOgImages[selectedPlatform.id] : undefined;
   const activeImage = selectedPlatform?.id ? (currentCustomImage || generateDefaultOgImage(selectedPlatform)) : '';
@@ -234,9 +209,9 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     let count = 0;
     platforms.forEach(p => {
       const originalUrl = customUrls[p.id] || p.url || `https://syncrozz.com/${p.id}`;
-      const currentUrl = rowUrls[p.id] || '';
+      const currentUrl = rowUrls[p.id] !== undefined ? rowUrls[p.id] : originalUrl;
       const originalStatus = p.status || 'Active';
-      const currentStatus = rowStatuses[p.id] || 'Active';
+      const currentStatus = rowStatuses[p.id] || originalStatus;
 
       if (currentUrl !== originalUrl || currentStatus !== originalStatus) {
         count++;
@@ -247,7 +222,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
   // Handle single row inline save in unified list
   const handleSaveRow = (platform: PlatformItem) => {
-    const newUrl = (rowUrls[platform.id] || '').trim();
+    const newUrl = (rowUrls[platform.id] !== undefined ? rowUrls[platform.id] : (customUrls[platform.id] || platform.url || '')).trim();
     const newStatus = rowStatuses[platform.id] || platform.status || 'Active';
 
     // 1. Save URL to storage & firestore
@@ -257,7 +232,18 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
       } else {
         saveCustomPlatformUrl(platform.id, newUrl);
       }
-      setCustomUrls(prev => ({ ...prev, [platform.id]: newUrl }));
+      setLocalCustomUrls(prev => ({ ...prev, [platform.id]: newUrl }));
+    } else {
+      if (onRemoveCustomUrl) {
+        onRemoveCustomUrl(platform.id);
+      } else {
+        removeCustomPlatformUrl(platform.id);
+      }
+      setLocalCustomUrls(prev => {
+        const next = { ...prev };
+        delete next[platform.id];
+        return next;
+      });
     }
 
     // 2. Save full platform if status or URL changed
@@ -284,9 +270,9 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     let savedTotal = 0;
     platforms.forEach(platform => {
       const originalUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
-      const currentUrl = (rowUrls[platform.id] || '').trim();
+      const currentUrl = (rowUrls[platform.id] !== undefined ? rowUrls[platform.id] : originalUrl).trim();
       const originalStatus = platform.status || 'Active';
-      const currentStatus = rowStatuses[platform.id] || 'Active';
+      const currentStatus = rowStatuses[platform.id] || originalStatus;
 
       if (currentUrl !== originalUrl || currentStatus !== originalStatus) {
         if (currentUrl) {
@@ -295,7 +281,18 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
           } else {
             saveCustomPlatformUrl(platform.id, currentUrl);
           }
-          setCustomUrls(prev => ({ ...prev, [platform.id]: currentUrl }));
+          setLocalCustomUrls(prev => ({ ...prev, [platform.id]: currentUrl }));
+        } else {
+          if (onRemoveCustomUrl) {
+            onRemoveCustomUrl(platform.id);
+          } else {
+            removeCustomPlatformUrl(platform.id);
+          }
+          setLocalCustomUrls(prev => {
+            const next = { ...prev };
+            delete next[platform.id];
+            return next;
+          });
         }
 
         const updatedPlatform: PlatformItem = {
@@ -322,7 +319,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
       } else {
         saveCustomPlatformUrl(selectedPlatform.id, finalUrl);
       }
-      setCustomUrls((prev) => ({ ...prev, [selectedPlatform.id]: finalUrl }));
+      setLocalCustomUrls((prev) => ({ ...prev, [selectedPlatform.id]: finalUrl }));
       setRowUrls(prev => ({ ...prev, [selectedPlatform.id]: finalUrl }));
     } else {
       if (onRemoveCustomUrl) {
@@ -330,7 +327,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
       } else {
         removeCustomPlatformUrl(selectedPlatform.id);
       }
-      setCustomUrls((prev) => {
+      setLocalCustomUrls((prev) => {
         const next = { ...prev };
         delete next[selectedPlatform.id];
         return next;
@@ -354,7 +351,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
     } else {
       removeCustomPlatformUrl(selectedPlatform.id);
     }
-    setCustomUrls((prev) => {
+    setLocalCustomUrls((prev) => {
       const next = { ...prev };
       delete next[selectedPlatform.id];
       return next;
@@ -674,7 +671,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {filteredPlatforms.map((plat, idx) => {
-                    const rowUrl = rowUrls[plat.id] ?? (customUrls[plat.id] || plat.url || `https://syncrozz.com/${plat.id}`);
+                    const rowUrl = rowUrls[plat.id] !== undefined ? rowUrls[plat.id] : (customUrls[plat.id] || plat.url || `https://syncrozz.com/${plat.id}`);
                     const rowStatus = rowStatuses[plat.id] ?? (plat.status || 'Active');
                     const hasCustomOg = !!customOgImages[plat.id];
                     const isSaved = !!savedRowIds[plat.id];
@@ -746,27 +743,41 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                         {/* Inline Platform URL Editor */}
                         <td className="py-2 px-3">
                           <div className="flex items-center gap-1">
-                            <input
-                              type="url"
-                              value={rowUrl}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setRowUrls(prev => ({ ...prev, [plat.id]: val }));
-                              }}
-                              placeholder={`https://syncrozz.com/${plat.id}`}
-                              className="w-full px-2 py-1 text-xs font-mono bg-white border border-slate-300 rounded-md text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400"
-                            />
+                            <div className="relative w-full">
+                              <input
+                                type="text"
+                                value={rowUrl}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setRowUrls(prev => ({ ...prev, [plat.id]: val }));
+                                }}
+                                placeholder="https://..."
+                                className="w-full pl-2 pr-7 py-1 text-xs font-mono bg-white border border-slate-300 rounded-md text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400"
+                              />
+                              {rowUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRowUrls(prev => ({ ...prev, [plat.id]: '' }))}
+                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-colors"
+                                  title="Kosongkan URL"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              ) : null}
+                            </div>
                             
                             {/* External Test Link */}
-                            <a
-                              href={rowUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md border border-slate-200 transition-colors shrink-0"
-                              title="Uji pautan luar"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            {rowUrl ? (
+                              <a
+                                href={rowUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md border border-slate-200 transition-colors shrink-0"
+                                title="Uji pautan luar"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ) : null}
                           </div>
                         </td>
 
@@ -941,7 +952,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                   return (
                     <div
                       key={plat.id}
-                      onClick={() => setSelectedPlatform(plat)}
+                      onClick={() => setSelectedPlatformId(plat.id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                         isSelected
                           ? 'bg-blue-50/80 border-[#0056D2] shadow-xs'
@@ -1117,14 +1128,25 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
                     <form onSubmit={handleSavePlatformUrl} className="space-y-2">
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="url"
-                          value={editingUrl}
-                          onChange={(e) => setEditingUrl(e.target.value)}
-                          placeholder={`https://syncrozz.com/${selectedPlatform.id}`}
-                          className="flex-grow px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          required
-                        />
+                        <div className="relative flex-grow">
+                          <input
+                            type="text"
+                            value={editingUrl}
+                            onChange={(e) => setEditingUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full pl-3 pr-8 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder-slate-400"
+                          />
+                          {editingUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setEditingUrl('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-colors"
+                              title="Kosongkan URL"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"

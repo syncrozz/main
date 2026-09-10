@@ -34,10 +34,12 @@ interface AdminDashboardProps {
   onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
 }
 
+const EMPTY_CUSTOM_URLS: Record<string, string> = {};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onExitToWebsite,
   customOgImages,
-  customUrls = {},
+  customUrls = EMPTY_CUSTOM_URLS,
   onSaveOgImage,
   onRemoveOgImage,
   onSaveCustomUrl,

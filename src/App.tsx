@@ -332,7 +332,7 @@ function MainAppContent() {
         photoUrl: user.picture
       }).catch(() => {});
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.id, user?.email]);
 
   // Section Observer for smooth nav highlight
   useEffect(() => {
