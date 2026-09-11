@@ -1,45 +1,16 @@
 import { db, isSqlConfigured } from './index.ts';
-import { platforms, users, auditLogs } from './schema.ts';
-import { PLATFORMS_DATA } from '../data/platforms.ts';
+import { users } from './schema.ts';
 import { eq } from 'drizzle-orm';
 
+// Auto-seeding disabled per architecture guidelines:
+// Empty, reduced, or deleted platforms are a valid application state.
+// No default/mock platforms should be resurrected automatically.
 export async function seedDatabaseIfEmpty() {
   if (!db || !isSqlConfigured()) {
     return;
   }
   try {
-    const existing = await db.select().from(platforms);
-
-    if (existing.length === 0) {
-      console.log('Seeding initial SYNCROZZ platforms into PostgreSQL database...');
-      for (const p of PLATFORMS_DATA) {
-        await db.insert(platforms).values({
-          id: p.id,
-          name: p.name,
-          subName: p.subName || null,
-          tagline: p.tagline,
-          description: p.description,
-          category: p.category,
-          badgeColor: p.badgeColor || 'blue',
-          accentColor: p.accentColor || 'blue',
-          logoBg: p.logoBg || 'bg-blue-600',
-          iconName: p.iconName || 'Sparkles',
-          features: JSON.stringify(p.features || []),
-          audience: JSON.stringify(p.audience || []),
-          url: p.url || null,
-          isPopular: p.isPopular ?? false,
-          status: p.status || 'Active',
-          ogImage: p.ogImage || null,
-          ogTitle: p.ogTitle || null,
-          ogDescription: p.ogDescription || null,
-          isDefault: true,
-          isDeleted: false,
-        }).onConflictDoNothing();
-      }
-      console.log(`Seeded ${PLATFORMS_DATA.length} platforms.`);
-    }
-
-    // Seed master admin placeholder record
+    // Only ensure master admin record exists if completely missing
     const masterAdminEmail = 'admin@syncrozz.com';
     const existingAdmin = await db.select().from(users).where(eq(users.email, masterAdminEmail));
     if (existingAdmin.length === 0) {
@@ -51,6 +22,6 @@ export async function seedDatabaseIfEmpty() {
       }).onConflictDoNothing();
     }
   } catch (err) {
-    console.warn('Database auto-seed notice:', err);
+    console.warn('Database user init notice:', err);
   }
 }

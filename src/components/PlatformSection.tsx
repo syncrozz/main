@@ -23,7 +23,6 @@ import {
   Plus,
   Database
 } from 'lucide-react';
-import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem, PlatformCategory } from '../types';
 import { generateDefaultOgImage } from '../utils/ogStorage';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -46,7 +45,7 @@ interface PlatformSectionProps {
 }
 
 export const PlatformSection: React.FC<PlatformSectionProps> = ({ 
-  platforms = PLATFORMS_DATA,
+  platforms = [],
   onSelectPlatform,
   customOgImages,
   customUrls = {},

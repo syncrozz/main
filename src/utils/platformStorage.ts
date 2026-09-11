@@ -44,10 +44,12 @@ export function saveLocalCustomPlatforms(platforms: PlatformItem[]): void {
 /**
  * Save deleted default platform IDs
  */
-export function saveDeletedDefaultPlatformIds(ids: string[]): void {
+export function saveDeletedDefaultPlatformIds(ids: string[], syncToFirestore: boolean = true): void {
   try {
     safeLocalStorageSet(DELETED_DEFAULT_PLATFORMS_KEY, JSON.stringify(ids));
-    saveDeletedDefaultPlatformIdsToFirestore(ids).catch(() => {});
+    if (syncToFirestore) {
+      saveDeletedDefaultPlatformIdsToFirestore(ids).catch(() => {});
+    }
   } catch (e) {
     console.warn('Failed to save deleted platform IDs:', e);
   }

@@ -50,14 +50,14 @@ const CAROUSEL_STORAGE_KEY = 'syncrozz_hero_carousel_slides_v1';
 export function getLocalCarouselSlides(): CarouselSlide[] {
   try {
     const raw = safeLocalStorageGet<string | null>(CAROUSEL_STORAGE_KEY, null);
-    if (!raw) return DEFAULT_HERO_CAROUSEL_SLIDES;
+    if (raw === null) return DEFAULT_HERO_CAROUSEL_SLIDES;
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
-    return DEFAULT_HERO_CAROUSEL_SLIDES;
+    return [];
   } catch {
-    return DEFAULT_HERO_CAROUSEL_SLIDES;
+    return [];
   }
 }
 

@@ -16,6 +16,7 @@ interface AdminLayoutProps {
   onRemoveCustomUrl?: (platformId: string) => void;
   platforms: PlatformItem[];
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
+  onSaveMultiplePlatforms?: (platforms: PlatformItem[]) => void;
   onDeletePlatform: (platformId: string) => void;
   carouselSlides: CarouselSlide[];
   onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
@@ -33,6 +34,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onRemoveCustomUrl,
   platforms,
   onSavePlatform,
+  onSaveMultiplePlatforms,
   onDeletePlatform,
   carouselSlides,
   onSaveCarouselSlides
@@ -85,6 +87,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       onRemoveCustomUrl={onRemoveCustomUrl}
       platforms={platforms}
       onSavePlatform={onSavePlatform}
+      onSaveMultiplePlatforms={onSaveMultiplePlatforms}
       onDeletePlatform={onDeletePlatform}
       carouselSlides={carouselSlides}
       onSaveCarouselSlides={onSaveCarouselSlides}

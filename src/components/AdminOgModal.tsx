@@ -16,7 +16,6 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react';
-import { PLATFORMS_DATA } from '../data/platforms';
 import { PlatformItem } from '../types';
 import { generateDefaultOgImage, getOfficialMasterOgImage } from '../utils/ogStorage';
 import { SYNCROZZ_OGI_OFFICIAL } from '../data/syncrozzAssets';
@@ -25,23 +24,35 @@ import { compressImageFile } from '../utils/imageCompressor';
 interface AdminOgModalProps {
   isOpen: boolean;
   onClose: () => void;
+  platforms?: PlatformItem[];
   customOgImages: Record<string, string>;
   onSaveOgImage: (platformId: string, dataUrl: string) => void;
   onRemoveOgImage: (platformId: string) => void;
+  isAdminMode?: boolean;
+  onToggleAdminMode?: () => void;
 }
 
 export const AdminOgModal: React.FC<AdminOgModalProps> = ({
   isOpen,
   onClose,
+  platforms,
   customOgImages,
   onSaveOgImage,
   onRemoveOgImage
 }) => {
-  const [selectedPlatformId, setSelectedPlatformId] = useState<string>(PLATFORMS_DATA[0].id);
+  const platformsList = platforms || [];
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string>(() => platformsList[0]?.id || '');
   const [dragActive, setDragActive] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update selected platform ID when platforms change if current selection is invalid
+  useEffect(() => {
+    if (platformsList.length > 0 && !platformsList.some(p => p.id === selectedPlatformId)) {
+      setSelectedPlatformId(platformsList[0].id);
+    }
+  }, [platformsList, selectedPlatformId]);
 
   // Keyboard Escape listener & body scroll lock
   useEffect(() => {
@@ -65,9 +76,9 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentPlatform = PLATFORMS_DATA.find((p) => p.id === selectedPlatformId) || PLATFORMS_DATA[0];
-  const customImage = customOgImages[currentPlatform.id];
-  const activeOgImage = customImage || generateDefaultOgImage(currentPlatform);
+  const currentPlatform = platformsList.find((p) => p.id === selectedPlatformId) || platformsList[0] || null;
+  const customImage = currentPlatform ? customOgImages[currentPlatform.id] : undefined;
+  const activeOgImage = currentPlatform ? (customImage || generateDefaultOgImage(currentPlatform)) : '';
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -202,7 +213,7 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
           <div className="lg:col-span-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Pilih Kad Platform ({PLATFORMS_DATA.length})
+                Pilih Kad Platform ({platformsList.length})
               </span>
               <span className="text-[11px] text-[#0056D2] font-semibold">
                 {Object.keys(customOgImages).length} Tersuai
@@ -210,80 +221,91 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
             </div>
 
             <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
-              {PLATFORMS_DATA.map((item) => {
-                const isSelected = item.id === selectedPlatformId;
-                const hasCustom = Boolean(customOgImages[item.id]);
+              {platformsList.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  Tiada platform didaftarkan.
+                </div>
+              ) : (
+                platformsList.map((item) => {
+                  const isSelected = item.id === selectedPlatformId;
+                  const hasCustom = Boolean(customOgImages[item.id]);
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedPlatformId(item.id)}
-                    className={`w-full p-3 rounded-xl text-left transition-all flex items-center justify-between border cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-50/80 border-[#0056D2] text-[#0056D2] shadow-xs'
-                        : 'bg-white border-slate-100 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                        isSelected ? 'bg-[#0056D2] text-white' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {item?.name?.charAt(0) || 'S'}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold truncate">
-                          {item.name} {item.subName || ''}
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedPlatformId(item.id)}
+                      className={`w-full p-3 rounded-xl text-left transition-all flex items-center justify-between border cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50/80 border-[#0056D2] text-[#0056D2] shadow-xs'
+                          : 'bg-white border-slate-100 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                          isSelected ? 'bg-[#0056D2] text-white' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {item?.name?.charAt(0) || 'S'}
                         </div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {item.category}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold truncate">
+                            {item.name} {item.subName || ''}
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            {item.category}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="shrink-0 flex items-center gap-1">
-                      {hasCustom ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                          JPG OK
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="shrink-0 flex items-center gap-1">
+                        {hasCustom ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            JPG OK
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* Right Column: Active Platform OG Upload & Preview Sandbox */}
           <div className="lg:col-span-8 space-y-6">
-            
-            {/* Header info */}
-            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-[11px] font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 py-0.5 rounded-full">
-                  {currentPlatform.category}
-                </span>
-                <h4 className="text-xl font-black text-slate-900 mt-1">
-                  {currentPlatform.name} {currentPlatform.subName || ''}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  {currentPlatform.tagline}
-                </p>
+            {!currentPlatform ? (
+              <div className="p-12 text-center text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                Tiada platform dipilih.
               </div>
+            ) : (
+              <>
+                {/* Header info */}
+                <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#0056D2] uppercase tracking-wider bg-blue-50 px-2.5 py-0.5 rounded-full">
+                      {currentPlatform.category}
+                    </span>
+                    <h4 className="text-xl font-black text-slate-900 mt-1">
+                      {currentPlatform.name} {currentPlatform.subName || ''}
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      {currentPlatform.tagline}
+                    </p>
+                  </div>
 
-              {customImage && (
-                <button
-                  onClick={() => onRemoveOgImage(currentPlatform.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Padam & Reset Default</span>
-                </button>
-              )}
-            </div>
+                  {customImage && (
+                    <button
+                      onClick={() => onRemoveOgImage(currentPlatform.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Padam & Reset Default</span>
+                    </button>
+                  )}
+                </div>
 
             {/* Open Graph Image Live 1200x630 Preview Canvas */}
             <div className="space-y-2">
@@ -416,6 +438,8 @@ export const AdminOgModal: React.FC<AdminOgModalProps> = ({
                 <code>{`<meta property="og:image" content="https://syncrozz.com/og/${currentPlatform.id}.jpg" />`}</code>
               </div>
             </div>
+          </>
+        )}
 
           </div>
 

@@ -18,15 +18,14 @@ import {
   updateContactInquiryStatus,
   deleteContactInquiry,
 } from './src/db/repositories.ts';
-import { seedDatabaseIfEmpty } from './src/db/seed.ts';
 import { isSqlConfigured } from './src/db/index.ts';
-import { PLATFORMS_DATA } from './src/data/platforms.ts';
 import { PlatformItem } from './src/types.ts';
 import {
   loadCloudStore,
   getFullCloudState,
   getStorePlatforms,
   upsertStorePlatform,
+  upsertStoreMultiplePlatforms,
   deleteStorePlatform,
   getStoreCustomUrls,
   setStoreCustomUrl,
@@ -175,13 +174,13 @@ app.post('/api/sync/push', (req, res) => {
 app.get('/api/platforms', async (req, res) => {
   try {
     const storePlatforms = getStorePlatforms();
-    if (storePlatforms && storePlatforms.length > 0) {
+    if (Array.isArray(storePlatforms)) {
       return res.json({ success: true, platforms: storePlatforms });
     }
-    return res.json({ success: true, platforms: PLATFORMS_DATA });
+    return res.json({ success: true, platforms: [] });
   } catch (error: any) {
-    console.warn('API get platforms falling back to default:', error);
-    return res.json({ success: true, platforms: PLATFORMS_DATA });
+    console.warn('API get platforms notice:', error);
+    return res.json({ success: true, platforms: [] });
   }
 });
 
@@ -209,6 +208,35 @@ app.post('/api/platforms', requireAdmin, async (req, res) => {
   } catch (error: any) {
     console.error('Failed to save platform:', error);
     return res.status(500).json({ error: error.message || 'Gagal menyimpan platform' });
+  }
+});
+
+app.post('/api/platforms/batch', requireAdmin, async (req, res) => {
+  try {
+    const { platforms } = req.body;
+    if (!Array.isArray(platforms)) {
+      return res.status(400).json({ error: 'Array platform diperlukan' });
+    }
+
+    const saved = upsertStoreMultiplePlatforms(platforms);
+
+    try {
+      for (const p of platforms) {
+        if (p && p.id && p.name) {
+          await upsertPlatform(p);
+        }
+      }
+    } catch {}
+
+    const actorEmail = (req.headers['x-user-email'] as string) || 'admin';
+    try {
+      await createAuditLog('PLATFORM_BATCH_SAVE', actorEmail, 'SUCCESS', `Batch save ${platforms.length} platform berjaya.`);
+    } catch {}
+
+    return res.json({ success: true, count: platforms.length, platforms: saved });
+  } catch (error: any) {
+    console.error('Failed to batch save platforms:', error);
+    return res.status(500).json({ error: error.message || 'Gagal menyimpan platform secara pukal' });
   }
 });
 
@@ -530,9 +558,6 @@ async function startServer() {
   if (!process.env.VERCEL) {
     app.listen(PORT, '0.0.0.0', async () => {
       console.log(`SYNCROZZ Server running on port ${PORT} with Cloud Persistence & Multi-tier Sync.`);
-      try {
-        await seedDatabaseIfEmpty();
-      } catch {}
     });
   }
 }

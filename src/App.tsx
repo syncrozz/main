@@ -18,7 +18,6 @@ import { AdminPinModal } from './components/AdminPinModal';
 import { SupportModal } from './components/SupportModal';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PlatformFormModal } from './components/admin/PlatformFormModal';
-import { PLATFORMS_DATA } from './data/platforms';
 import { PlatformItem } from './types';
 import { CarouselSlide, getLocalCarouselSlides, saveLocalCarouselSlides } from './utils/carouselStorage';
 import { compressDataUrl } from './utils/imageCompressor';
@@ -53,6 +52,7 @@ import {
   checkCloudVersionApi,
   pushClientStateApi,
   savePlatformApi,
+  saveMultiplePlatformsApi,
   deletePlatformApi,
   saveCustomUrlApi,
   removeCustomUrlApi,
@@ -138,7 +138,7 @@ function MainAppContent() {
         lastSeenSyncTimeRef.current = cloudState.lastUpdated || Date.now();
 
         // If cloud store has platforms, apply them
-        if (cloudState.platforms && cloudState.platforms.length > 0) {
+        if (Array.isArray(cloudState.platforms)) {
           latestCustomPlatformsRef.current = cloudState.platforms;
           saveLocalCustomPlatforms(cloudState.platforms);
           const deleted = cloudState.deletedDefaultIds || [];
@@ -147,48 +147,21 @@ function MainAppContent() {
         }
 
         // Custom URLs
-        if (cloudState.customUrls && Object.keys(cloudState.customUrls).length > 0) {
+        if (cloudState.customUrls) {
           setCustomUrls(cloudState.customUrls);
           safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(cloudState.customUrls));
         }
 
         // Carousel Slides
-        if (cloudState.carouselSlides && cloudState.carouselSlides.length > 0) {
+        if (Array.isArray(cloudState.carouselSlides)) {
           setCarouselSlides(cloudState.carouselSlides);
           saveLocalCarouselSlides(cloudState.carouselSlides);
         }
 
         // OG Images
-        if (cloudState.ogImages && Object.keys(cloudState.ogImages).length > 0) {
+        if (cloudState.ogImages) {
           setCustomOgImages((prev) => ({ ...prev, ...cloudState.ogImages }));
           safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(cloudState.ogImages));
-        }
-
-        // If local client has platforms/slides/urls/ogImages that might be missing on cloud (e.g. from an existing tab before cloud sync)
-        const hasUnsyncedLocalOg = Object.keys(localOg).length > 0 && Object.keys(localOg).some(id => !cloudState.ogImages?.[id]);
-        const hasUnsyncedLocalPlatforms = localPlatforms.length > 0 && localPlatforms.some(lp => !cloudState.platforms?.some(cp => cp.id === lp.id));
-        const hasUnsyncedLocalUrls = Object.keys(localUrls).length > 0 && Object.keys(localUrls).some(id => !cloudState.customUrls?.[id]);
-        const hasUnsyncedLocalSlides = localSlides.length > 0 && (!cloudState.carouselSlides || cloudState.carouselSlides.length === 0);
-
-        if (hasUnsyncedLocalOg || hasUnsyncedLocalPlatforms || hasUnsyncedLocalUrls || hasUnsyncedLocalSlides) {
-          pushClientStateApi({
-            platforms: localPlatforms.length > 0 ? localPlatforms : undefined,
-            customUrls: Object.keys(localUrls).length > 0 ? localUrls : undefined,
-            carouselSlides: hasUnsyncedLocalSlides ? localSlides : undefined,
-            deletedDefaultIds: localDeleted.length > 0 ? localDeleted : undefined,
-            ogImages: Object.keys(localOg).length > 0 ? localOg : undefined
-          }).then((merged) => {
-            if (merged) {
-              if (merged.platforms) {
-                latestCustomPlatformsRef.current = merged.platforms;
-                setPlatforms(getAllPlatforms(merged.platforms, merged.deletedDefaultIds || []));
-              }
-              if (merged.ogImages) {
-                setCustomOgImages((prev) => ({ ...prev, ...merged.ogImages }));
-                safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(merged.ogImages));
-              }
-            }
-          }).catch(() => {});
         }
       }
     }).catch((err) => {
@@ -216,9 +189,9 @@ function MainAppContent() {
     });
 
     const unsubscribeDeleted = subscribeToDeletedDefaultPlatforms((deletedIds) => {
-      if (deletedIds) {
+      if (Array.isArray(deletedIds)) {
         latestDeletedIdsRef.current = deletedIds;
-        saveDeletedDefaultPlatformIds(deletedIds);
+        saveDeletedDefaultPlatformIds(deletedIds, false);
         const merged = getAllPlatforms(latestCustomPlatformsRef.current, deletedIds);
         setPlatforms(merged);
       }
@@ -235,7 +208,7 @@ function MainAppContent() {
     });
 
     const unsubscribeCarousel = subscribeToCarouselSlides((firestoreSlides) => {
-      if (firestoreSlides && Array.isArray(firestoreSlides) && firestoreSlides.length > 0) {
+      if (Array.isArray(firestoreSlides)) {
         setCarouselSlides(firestoreSlides);
         saveLocalCarouselSlides(firestoreSlides);
       }
@@ -251,16 +224,18 @@ function MainAppContent() {
           lastSeenSyncTimeRef.current = ver.lastUpdated;
           const fresh = await fetchFullCloudStateApi();
           if (fresh) {
-            if (fresh.platforms && fresh.platforms.length > 0) {
+            if (Array.isArray(fresh.platforms)) {
               latestCustomPlatformsRef.current = fresh.platforms;
               saveLocalCustomPlatforms(fresh.platforms);
-              setPlatforms(getAllPlatforms(fresh.platforms, fresh.deletedDefaultIds || []));
+              const deleted = fresh.deletedDefaultIds || [];
+              latestDeletedIdsRef.current = deleted;
+              setPlatforms(getAllPlatforms(fresh.platforms, deleted));
             }
             if (fresh.customUrls) {
               setCustomUrls(fresh.customUrls);
               safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(fresh.customUrls));
             }
-            if (fresh.carouselSlides && fresh.carouselSlides.length > 0) {
+            if (Array.isArray(fresh.carouselSlides) && fresh.carouselSlides.length > 0) {
               setCarouselSlides(fresh.carouselSlides);
               saveLocalCarouselSlides(fresh.carouselSlides);
             }
@@ -268,13 +243,14 @@ function MainAppContent() {
               setCustomOgImages((prev) => ({ ...prev, ...fresh.ogImages }));
               safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(fresh.ogImages));
             }
-            if (fresh.deletedDefaultIds) {
+            if (Array.isArray(fresh.deletedDefaultIds)) {
               latestDeletedIdsRef.current = fresh.deletedDefaultIds;
+              saveDeletedDefaultPlatformIds(fresh.deletedDefaultIds, false);
             }
           }
         }
       } catch {}
-    }, 6000);
+    }, 3500);
 
     const handleVisibility = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -282,18 +258,35 @@ function MainAppContent() {
           const fresh = await fetchFullCloudStateApi();
           if (fresh) {
             lastSeenSyncTimeRef.current = fresh.lastUpdated || Date.now();
-            if (fresh.platforms && fresh.platforms.length > 0) {
+            if (Array.isArray(fresh.platforms)) {
               latestCustomPlatformsRef.current = fresh.platforms;
-              setPlatforms(getAllPlatforms(fresh.platforms, fresh.deletedDefaultIds || []));
+              saveLocalCustomPlatforms(fresh.platforms);
+              const deleted = fresh.deletedDefaultIds || [];
+              latestDeletedIdsRef.current = deleted;
+              setPlatforms(getAllPlatforms(fresh.platforms, deleted));
             }
-            if (fresh.customUrls) setCustomUrls(fresh.customUrls);
-            if (fresh.carouselSlides) setCarouselSlides(fresh.carouselSlides);
-            if (fresh.ogImages) setCustomOgImages((prev) => ({ ...prev, ...fresh.ogImages }));
+            if (fresh.customUrls) {
+              setCustomUrls(fresh.customUrls);
+              safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(fresh.customUrls));
+            }
+            if (Array.isArray(fresh.carouselSlides) && fresh.carouselSlides.length > 0) {
+              setCarouselSlides(fresh.carouselSlides);
+              saveLocalCarouselSlides(fresh.carouselSlides);
+            }
+            if (fresh.ogImages) {
+              setCustomOgImages((prev) => ({ ...prev, ...fresh.ogImages }));
+              safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(fresh.ogImages));
+            }
+            if (Array.isArray(fresh.deletedDefaultIds)) {
+              latestDeletedIdsRef.current = fresh.deletedDefaultIds;
+              saveDeletedDefaultPlatformIds(fresh.deletedDefaultIds, false);
+            }
           }
         } catch {}
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
 
     // 5. Same-browser cross-tab storage event synchronization
     const handleStorageChange = (e: StorageEvent) => {
@@ -313,6 +306,7 @@ function MainAppContent() {
     return () => {
       clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
       window.removeEventListener('storage', handleStorageChange);
       unsubscribeOg();
       unsubscribePlatforms();
@@ -403,7 +397,7 @@ function MainAppContent() {
   };
 
   const handleSelectPlatformById = (id: string) => {
-    const found = platforms.find((p) => p.id === id) || PLATFORMS_DATA.find((p) => p.id === id);
+    const found = platforms.find((p) => p.id === id);
     if (found) {
       setSelectedPlatform(found);
     }
@@ -418,10 +412,13 @@ function MainAppContent() {
     }
 
     saveCustomOgImage(platformId, finalUrl);
-    setCustomOgImages((prev) => ({
-      ...prev,
-      [platformId]: finalUrl
-    }));
+    setCustomOgImages((prev) => {
+      const updated = { ...prev, [platformId]: finalUrl };
+      pushClientStateApi({
+        ogImages: updated
+      }, user?.token, user?.email || undefined).catch(() => {});
+      return updated;
+    });
     saveOgImageApi(platformId, finalUrl, user?.token, user?.email || undefined).catch(() => {});
     saveOgImageToFirestore(platformId, finalUrl, user?.email || undefined).catch(() => {});
   };
@@ -431,6 +428,9 @@ function MainAppContent() {
     setCustomOgImages((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
+      pushClientStateApi({
+        ogImages: copy
+      }, user?.token, user?.email || undefined).catch(() => {});
       return copy;
     });
     fetch(`/api/og-images/${encodeURIComponent(platformId)}`, {
@@ -446,10 +446,13 @@ function MainAppContent() {
 
   const handleSaveCustomUrl = (platformId: string, url: string) => {
     saveCustomPlatformUrl(platformId, url);
-    setCustomUrls((prev) => ({
-      ...prev,
-      [platformId]: url
-    }));
+    setCustomUrls((prev) => {
+      const updated = { ...prev, [platformId]: url };
+      pushClientStateApi({
+        customUrls: updated
+      }, user?.token, user?.email || undefined).catch(() => {});
+      return updated;
+    });
     saveCustomUrlApi(platformId, url, user?.email || undefined).catch(() => {});
     saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
   };
@@ -459,6 +462,9 @@ function MainAppContent() {
     setCustomUrls((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
+      pushClientStateApi({
+        customUrls: copy
+      }, user?.token, user?.email || undefined).catch(() => {});
       return copy;
     });
     removeCustomUrlApi(platformId, user?.email || undefined).catch(() => {});
@@ -468,7 +474,15 @@ function MainAppContent() {
   const handleSavePlatform = (platform: PlatformItem, ogImageDataUrl?: string) => {
     const updated = savePlatform(platform);
     setPlatforms(updated);
+    const customPlatforms = getLocalCustomPlatforms();
+    latestCustomPlatformsRef.current = customPlatforms;
+
     savePlatformApi(platform, user?.token, user?.email || undefined).catch(() => {});
+    pushClientStateApi({
+      platforms: customPlatforms,
+      deletedDefaultIds: latestDeletedIdsRef.current
+    }, user?.token, user?.email || undefined).catch(() => {});
+
     savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('SAVE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform ${platform.name} (#${platform.id}) saved.`).catch(() => {});
 
@@ -477,10 +491,53 @@ function MainAppContent() {
     }
   };
 
+  const handleSaveMultiplePlatforms = (newPlatforms: PlatformItem[]) => {
+    if (!newPlatforms || newPlatforms.length === 0) return;
+    const current = getLocalCustomPlatforms();
+    const deletedIds = getDeletedDefaultPlatformIds();
+    const map = new Map<string, PlatformItem>(current.map((p) => [p.id, p]));
+    const now = Date.now();
+
+    newPlatforms.forEach((p, idx) => {
+      const existing = map.get(p.id);
+      map.set(p.id, {
+        ...p,
+        createdAt: p.createdAt || existing?.createdAt || now,
+        updatedAt: now + idx,
+        isCustom: p.isCustom ?? existing?.isCustom ?? true
+      });
+    });
+
+    const updatedCustom = Array.from(map.values());
+    saveLocalCustomPlatforms(updatedCustom);
+    latestCustomPlatformsRef.current = updatedCustom;
+    setPlatforms(getAllPlatforms(updatedCustom, deletedIds));
+
+    saveMultiplePlatformsApi(newPlatforms, user?.token, user?.email || undefined).catch(() => {});
+    pushClientStateApi({
+      platforms: updatedCustom,
+      deletedDefaultIds: deletedIds
+    }, user?.token, user?.email || undefined).catch(() => {});
+
+    newPlatforms.forEach((p) => {
+      savePlatformToFirestore(p, user?.email || undefined).catch(() => {});
+    });
+    logAuditEventToFirestore('BATCH_SAVE_PLATFORMS', user?.email || 'admin', 'SUCCESS', `Batch saved ${newPlatforms.length} platforms.`).catch(() => {});
+  };
+
   const handleDeletePlatform = (platformId: string) => {
     const updated = deletePlatform(platformId);
     setPlatforms(updated);
     const updatedDeletedIds = getDeletedDefaultPlatformIds();
+    const updatedCustom = getLocalCustomPlatforms();
+    latestCustomPlatformsRef.current = updatedCustom;
+    latestDeletedIdsRef.current = updatedDeletedIds;
+
+    pushClientStateApi({
+      platforms: updatedCustom,
+      deletedDefaultIds: updatedDeletedIds
+    }, user?.token, user?.email || undefined).catch(() => {});
+
     saveDeletedPlatformsApi(updatedDeletedIds, user?.email || undefined).catch(() => {});
     deletePlatformApi(platformId, user?.token, user?.email || undefined).catch(() => {});
     deletePlatformFromFirestore(platformId).catch(() => {});
@@ -491,6 +548,9 @@ function MainAppContent() {
     setCarouselSlides(updatedSlides);
     saveLocalCarouselSlides(updatedSlides);
     saveCarouselSlidesApi(updatedSlides, user?.email || undefined).catch(() => {});
+    pushClientStateApi({
+      carouselSlides: updatedSlides
+    }, user?.token, user?.email || undefined).catch(() => {});
     saveCarouselSlidesToFirestore(updatedSlides, user?.email || undefined).catch(() => {});
     logAuditEventToFirestore('UPDATE_CAROUSEL', user?.email || 'admin', 'SUCCESS', `Hero Carousel updated (${updatedSlides.length} slides).`).catch(() => {});
   };
@@ -508,6 +568,7 @@ function MainAppContent() {
         onRemoveCustomUrl={handleRemoveCustomUrl}
         platforms={platforms}
         onSavePlatform={handleSavePlatform}
+        onSaveMultiplePlatforms={handleSaveMultiplePlatforms}
         onDeletePlatform={handleDeletePlatform}
         carouselSlides={carouselSlides}
         onSaveCarouselSlides={handleSaveCarouselSlides}
@@ -644,6 +705,7 @@ function MainAppContent() {
       <AdminOgModal
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
+        platforms={platforms}
         customOgImages={customOgImages}
         onSaveOgImage={handleSaveOgImage}
         onRemoveOgImage={handleRemoveOgImage}

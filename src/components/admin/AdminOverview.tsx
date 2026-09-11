@@ -18,7 +18,6 @@ import {
   Database
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
-import { PLATFORMS_DATA } from '../../data/platforms';
 import { MASTER_ADMIN_EMAIL } from '../../auth/authConfig';
 import { AdminTab } from './AdminHeader';
 import { InquiryItem } from '../../types';
@@ -39,7 +38,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
   const { user, isMasterAdmin, getAdminEmails } = useAuth();
   const secondaryAdmins = getAdminEmails();
 
-  const totalPlatforms = totalPlatformsCount !== undefined ? totalPlatformsCount : PLATFORMS_DATA.length;
+  const totalPlatforms = totalPlatformsCount !== undefined ? totalPlatformsCount : 0;
   const unreadCount = inquiries.filter(i => !i.read || i.status === 'new').length;
   const recentInquiries = inquiries.slice(0, 3);
 

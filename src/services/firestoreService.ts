@@ -109,6 +109,7 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
   try {
     const colRef = collection(db, 'platformOgImages');
     return onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) return;
       const result: Record<string, string> = {};
       snapshot.forEach((docSnap) => {
         if (docSnap.id.startsWith('config_') || docSnap.id.startsWith('__')) return;
@@ -117,7 +118,9 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
           result[data.platformId] = data.imageUrl;
         }
       });
-      callback(result);
+      if (Object.keys(result).length > 0) {
+        callback(result);
+      }
     }, (error) => {
       handleFirestoreError('subscribeToOgImages', error);
     });
@@ -240,9 +243,10 @@ export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void)
     const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
-        callback(snapshot.data().platforms || []);
-      } else {
-        callback([]);
+        const data = snapshot.data();
+        if (data && Array.isArray(data.platforms)) {
+          callback(data.platforms);
+        }
       }
     }, (error) => {
       handleFirestoreError('subscribeToCustomPlatforms', error);
@@ -301,9 +305,10 @@ export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, st
     const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
-        callback(snapshot.data().urls || {});
-      } else {
-        callback({});
+        const data = snapshot.data();
+        if (data && typeof data.urls === 'object') {
+          callback(data.urls);
+        }
       }
     }, (error) => {
       handleFirestoreError('subscribeToCustomPlatformUrls', error);
@@ -338,9 +343,9 @@ export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => 
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        callback(data.deletedIds || []);
-      } else {
-        callback([]);
+        if (data && Array.isArray(data.deletedIds)) {
+          callback(data.deletedIds);
+        }
       }
     }, (error) => {
       handleFirestoreError('subscribeToDeletedDefaultPlatforms', error);
@@ -390,9 +395,9 @@ export function subscribeToCarouselSlides(callback: (slides: any[]) => void): ()
     return onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        callback(data.slides || []);
-      } else {
-        callback([]);
+        if (data && Array.isArray(data.slides)) {
+          callback(data.slides);
+        }
       }
     }, (error) => {
       handleFirestoreError('subscribeToCarouselSlides', error);

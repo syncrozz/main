@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { PLATFORMS_DATA } from '../data/platforms.ts';
 import { PlatformItem } from '../types.ts';
 import { CarouselSlide } from '../utils/carouselStorage.ts';
 
@@ -21,7 +20,7 @@ const STORE_FILE_PATH = path.join(process.cwd(), '.syncrozz_store.json');
 let memoryStore: CloudStoreData = {
   version: 1,
   lastUpdated: Date.now(),
-  platforms: [...PLATFORMS_DATA],
+  platforms: [],
   customUrls: {},
   carouselSlides: [],
   deletedDefaultIds: [],
@@ -48,17 +47,22 @@ export function loadCloudStore(): CloudStoreData {
     if (fs.existsSync(STORE_FILE_PATH)) {
       const raw = fs.readFileSync(STORE_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.platforms)) {
+      if (parsed && typeof parsed === 'object') {
         memoryStore = {
           version: parsed.version || 1,
           lastUpdated: parsed.lastUpdated || Date.now(),
-          platforms: parsed.platforms.length > 0 ? parsed.platforms : [...PLATFORMS_DATA],
+          platforms: Array.isArray(parsed.platforms) ? parsed.platforms : [],
           customUrls: parsed.customUrls || {},
-          carouselSlides: parsed.carouselSlides || [],
-          deletedDefaultIds: parsed.deletedDefaultIds || [],
+          carouselSlides: Array.isArray(parsed.carouselSlides) ? parsed.carouselSlides : [],
+          deletedDefaultIds: Array.isArray(parsed.deletedDefaultIds) ? parsed.deletedDefaultIds : [],
           ogImages: parsed.ogImages || {},
-          inquiries: parsed.inquiries || []
+          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : []
         };
+
+        if (memoryStore.deletedDefaultIds.length > 0) {
+          const delSet = new Set(memoryStore.deletedDefaultIds);
+          memoryStore.platforms = memoryStore.platforms.filter((p) => !delSet.has(p.id));
+        }
       }
     }
   } catch (error) {
@@ -81,6 +85,9 @@ export function getStorePlatforms(): PlatformItem[] {
 
 export function upsertStorePlatform(platform: PlatformItem): PlatformItem {
   loadCloudStore();
+  if (platform.ogImage) {
+    memoryStore.ogImages[platform.id] = platform.ogImage;
+  }
   const index = memoryStore.platforms.findIndex((p) => p.id === platform.id);
   if (index >= 0) {
     memoryStore.platforms[index] = { ...platform };
@@ -91,6 +98,24 @@ export function upsertStorePlatform(platform: PlatformItem): PlatformItem {
   memoryStore.lastUpdated = Date.now();
   saveStoreToDisk();
   return platform;
+}
+
+export function upsertStoreMultiplePlatforms(newPlatforms: PlatformItem[]): PlatformItem[] {
+  loadCloudStore();
+  const map = new Map<string, PlatformItem>(memoryStore.platforms.map((p) => [p.id, p]));
+  newPlatforms.forEach((p) => {
+    if (p && p.id) {
+      if (p.ogImage) {
+        memoryStore.ogImages[p.id] = p.ogImage;
+      }
+      map.set(p.id, { ...p });
+    }
+  });
+  memoryStore.platforms = Array.from(map.values());
+  memoryStore.version += 1;
+  memoryStore.lastUpdated = Date.now();
+  saveStoreToDisk();
+  return memoryStore.platforms;
 }
 
 export function deleteStorePlatform(platformId: string): void {
@@ -174,30 +199,29 @@ export function setStoreDeletedDefaultIds(ids: string[]): void {
 
 export function mergeStoreClientState(clientState: Partial<CloudStoreData>): CloudStoreData {
   loadCloudStore();
-  if (clientState.platforms && Array.isArray(clientState.platforms) && clientState.platforms.length > 0) {
-    const existingMap = new Map<string, PlatformItem>();
-    memoryStore.platforms.forEach((p) => {
-      if (p && p.id) existingMap.set(p.id, p);
-    });
+  if (clientState.platforms !== undefined && Array.isArray(clientState.platforms)) {
+    memoryStore.platforms = clientState.platforms;
     clientState.platforms.forEach((p) => {
-      if (p && p.id) existingMap.set(p.id, p);
+      if (p && p.id && p.ogImage && !memoryStore.ogImages[p.id]) {
+        memoryStore.ogImages[p.id] = p.ogImage;
+      }
     });
-    memoryStore.platforms = Array.from(existingMap.values());
   }
-  if (clientState.customUrls && typeof clientState.customUrls === 'object') {
+  if (clientState.customUrls !== undefined && typeof clientState.customUrls === 'object') {
     memoryStore.customUrls = { ...memoryStore.customUrls, ...clientState.customUrls };
   }
-  if (clientState.carouselSlides && Array.isArray(clientState.carouselSlides) && clientState.carouselSlides.length > 0) {
+  if (clientState.carouselSlides !== undefined && Array.isArray(clientState.carouselSlides)) {
     memoryStore.carouselSlides = clientState.carouselSlides;
   }
-  if (clientState.deletedDefaultIds && Array.isArray(clientState.deletedDefaultIds)) {
+  if (clientState.deletedDefaultIds !== undefined && Array.isArray(clientState.deletedDefaultIds)) {
     memoryStore.deletedDefaultIds = Array.from(new Set([...memoryStore.deletedDefaultIds, ...clientState.deletedDefaultIds]));
-    memoryStore.platforms = memoryStore.platforms.filter((p) => !memoryStore.deletedDefaultIds.includes(p.id));
+    const delSet = new Set(memoryStore.deletedDefaultIds);
+    memoryStore.platforms = memoryStore.platforms.filter((p) => !delSet.has(p.id));
   }
-  if (clientState.ogImages && typeof clientState.ogImages === 'object') {
+  if (clientState.ogImages !== undefined && typeof clientState.ogImages === 'object') {
     memoryStore.ogImages = { ...memoryStore.ogImages, ...clientState.ogImages };
   }
-  if (clientState.inquiries && Array.isArray(clientState.inquiries)) {
+  if (clientState.inquiries !== undefined && Array.isArray(clientState.inquiries)) {
     const existingInquiriesMap = new Map(memoryStore.inquiries.map((i: any) => [i.id, i]));
     clientState.inquiries.forEach((inq: any) => {
       if (inq && inq.id) existingInquiriesMap.set(inq.id, inq);

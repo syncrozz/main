@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { PlatformItem } from '../types';
 import { generateDefaultOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from '../utils/ogStorage';
+import { compressImageFile } from '../utils/imageCompressor';
 import { useAuth } from '../auth/AuthContext';
 
 interface PlatformModalProps {
@@ -59,7 +60,7 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
 
   useEffect(() => {
     if (platform) {
-      const currentUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
+      const currentUrl = customUrls[platform.id] !== undefined ? customUrls[platform.id] : (platform.url || '');
       setEditedUrl(currentUrl);
       setIsEditingUrl(false);
     }
@@ -90,7 +91,7 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
 
   const customImage = customOgImages[platform.id];
   const ogImageUrl = customImage || generateDefaultOgImage(platform);
-  const targetExternalUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
+  const targetExternalUrl = customUrls[platform.id] !== undefined ? customUrls[platform.id] : (platform.url || '');
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText?.(window.location.origin + '#' + platform.id);
@@ -132,23 +133,36 @@ export const PlatformModal: React.FC<PlatformModalProps> = ({
       delete next[platform.id];
       return next;
     });
-    setEditedUrl(platform.url || `https://syncrozz.com/${platform.id}`);
+    setEditedUrl(platform.url || '');
     setIsEditingUrl(false);
     setUrlSavedToast(true);
     setTimeout(() => setUrlSavedToast(false), 2500);
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && onSaveOgImage) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        if (dataUrl) {
-          onSaveOgImage(platform.id, dataUrl);
+      try {
+        const compressed = await compressImageFile(file, {
+          maxWidth: 1200,
+          maxHeight: 630,
+          quality: 0.85,
+          format: 'image/jpeg'
+        });
+        if (compressed) {
+          onSaveOgImage(platform.id, compressed);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          if (dataUrl) {
+            onSaveOgImage(platform.id, dataUrl);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      e.target.value = '';
     }
   };
 

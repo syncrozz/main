@@ -29,6 +29,7 @@ interface AdminDashboardProps {
   onRemoveCustomUrl?: (platformId: string) => void;
   platforms: PlatformItem[];
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
+  onSaveMultiplePlatforms?: (platforms: PlatformItem[]) => void;
   onDeletePlatform: (platformId: string) => void;
   carouselSlides: CarouselSlide[];
   onSaveCarouselSlides: (slides: CarouselSlide[]) => void;
@@ -46,6 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRemoveCustomUrl,
   platforms,
   onSavePlatform,
+  onSaveMultiplePlatforms,
   onDeletePlatform,
   carouselSlides,
   onSaveCarouselSlides
@@ -192,6 +194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onSaveCustomUrl={onSaveCustomUrl}
             onRemoveCustomUrl={onRemoveCustomUrl}
             onSavePlatform={onSavePlatform}
+            onSaveMultiplePlatforms={onSaveMultiplePlatforms}
             onDeletePlatform={onDeletePlatform}
           />
         )}
@@ -218,11 +221,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             carouselSlides={carouselSlides}
             customUrls={customUrls}
             onSavePlatform={onSavePlatform}
-            onSaveMultiplePlatforms={(platformsToSave) => {
+            onSaveMultiplePlatforms={onSaveMultiplePlatforms || ((platformsToSave) => {
               platformsToSave.forEach(p => onSavePlatform(p));
-            }}
+            })}
             onRestoreBackup={(backup: SyncrozzBackupPayload) => {
-              backup.data.platforms.forEach(p => onSavePlatform(p));
+              if (onSaveMultiplePlatforms && backup.data.platforms.length > 0) {
+                onSaveMultiplePlatforms(backup.data.platforms);
+              } else {
+                backup.data.platforms.forEach(p => onSavePlatform(p));
+              }
               if (backup.data.carouselSlides && backup.data.carouselSlides.length > 0) {
                 onSaveCarouselSlides(backup.data.carouselSlides);
               }

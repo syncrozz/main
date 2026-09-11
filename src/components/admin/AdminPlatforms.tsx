@@ -50,6 +50,7 @@ interface AdminPlatformsProps {
   onSaveCustomUrl?: (platformId: string, url: string) => void;
   onRemoveCustomUrl?: (platformId: string) => void;
   onSavePlatform: (platform: PlatformItem, ogImageDataUrl?: string) => void;
+  onSaveMultiplePlatforms?: (platforms: PlatformItem[]) => void;
   onDeletePlatform: (platformId: string) => void;
 }
 
@@ -64,6 +65,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   onSaveCustomUrl,
   onRemoveCustomUrl,
   onSavePlatform,
+  onSaveMultiplePlatforms,
   onDeletePlatform
 }) => {
   const { user } = useAuth();
@@ -152,15 +154,20 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
         return;
       }
 
-      let imported = 0;
+      const validPlatforms: PlatformItem[] = [];
       res.results.forEach(r => {
         if (r.data && r.errors.length === 0) {
-          onSavePlatform(r.data);
-          imported++;
+          validPlatforms.push(r.data);
         }
       });
 
-      setDataSafetyNotice(`Berjaya mengimport ${imported} rekod platform daripada fail CSV.`);
+      if (onSaveMultiplePlatforms) {
+        onSaveMultiplePlatforms(validPlatforms);
+      } else {
+        validPlatforms.forEach(p => onSavePlatform(p));
+      }
+
+      setDataSafetyNotice(`Berjaya mengimport ${validPlatforms.length} rekod platform daripada fail CSV.`);
       setTimeout(() => setDataSafetyNotice(null), 4000);
     };
     reader.readAsText(file);
@@ -179,14 +186,16 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   // Sync editingUrl whenever the selected platform ID changes
   useEffect(() => {
     if (selectedPlatform?.id) {
-      const activeUrl = customUrls[selectedPlatform.id] || selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
+      const activeUrl = customUrls[selectedPlatform.id] !== undefined 
+        ? customUrls[selectedPlatform.id] 
+        : (selectedPlatform.url || '');
       setEditingUrl(activeUrl);
     }
   }, [selectedPlatform?.id]);
 
   const currentCustomImage = selectedPlatform?.id ? customOgImages[selectedPlatform.id] : undefined;
   const activeImage = selectedPlatform?.id ? (currentCustomImage || generateDefaultOgImage(selectedPlatform)) : '';
-  const activePlatformUrl = selectedPlatform?.id ? (customUrls[selectedPlatform.id] || selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`) : '';
+  const activePlatformUrl = selectedPlatform?.id ? (customUrls[selectedPlatform.id] !== undefined ? customUrls[selectedPlatform.id] : (selectedPlatform.url || '')) : '';
 
   const filteredPlatforms = useMemo(() => {
     return platforms.filter(p => {
@@ -195,20 +204,19 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
         p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.url && p.url.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (rowUrls[p.id] && rowUrls[p.id].toLowerCase().includes(searchQuery.toLowerCase())) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCat = selectedCategoryFilter === 'all' || p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
 
       return matchesSearch && matchesCat;
     });
-  }, [platforms, searchQuery, selectedCategoryFilter, rowUrls]);
+  }, [platforms, searchQuery, selectedCategoryFilter]);
 
   // Check how many rows have modified unsaved changes
   const modifiedCount = useMemo(() => {
     let count = 0;
     platforms.forEach(p => {
-      const originalUrl = customUrls[p.id] || p.url || `https://syncrozz.com/${p.id}`;
+      const originalUrl = customUrls[p.id] !== undefined ? customUrls[p.id] : (p.url || '');
       const currentUrl = rowUrls[p.id] !== undefined ? rowUrls[p.id] : originalUrl;
       const originalStatus = p.status || 'Active';
       const currentStatus = rowStatuses[p.id] || originalStatus;
@@ -222,7 +230,8 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
   // Handle single row inline save in unified list
   const handleSaveRow = (platform: PlatformItem) => {
-    const newUrl = (rowUrls[platform.id] !== undefined ? rowUrls[platform.id] : (customUrls[platform.id] || platform.url || '')).trim();
+    const originalUrl = customUrls[platform.id] !== undefined ? customUrls[platform.id] : (platform.url || '');
+    const newUrl = (rowUrls[platform.id] !== undefined ? rowUrls[platform.id] : originalUrl).trim();
     const newStatus = rowStatuses[platform.id] || platform.status || 'Active';
 
     // 1. Save URL to storage & firestore
@@ -246,10 +255,10 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
       });
     }
 
-    // 2. Save full platform if status or URL changed
+    // 2. Save full platform with the exact newUrl (empty string is preserved, never reverted!)
     const updatedPlatform: PlatformItem = {
       ...platform,
-      url: newUrl || platform.url,
+      url: newUrl,
       status: newStatus as any
     };
     onSavePlatform(updatedPlatform);
@@ -269,7 +278,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
   const handleBulkSave = () => {
     let savedTotal = 0;
     platforms.forEach(platform => {
-      const originalUrl = customUrls[platform.id] || platform.url || `https://syncrozz.com/${platform.id}`;
+      const originalUrl = customUrls[platform.id] !== undefined ? customUrls[platform.id] : (platform.url || '');
       const currentUrl = (rowUrls[platform.id] !== undefined ? rowUrls[platform.id] : originalUrl).trim();
       const originalStatus = platform.status || 'Active';
       const currentStatus = rowStatuses[platform.id] || originalStatus;
@@ -297,7 +306,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
 
         const updatedPlatform: PlatformItem = {
           ...platform,
-          url: currentUrl || platform.url,
+          url: currentUrl,
           status: currentStatus as any
         };
         onSavePlatform(updatedPlatform);
@@ -332,12 +341,13 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
         delete next[selectedPlatform.id];
         return next;
       });
+      setRowUrls(prev => ({ ...prev, [selectedPlatform.id]: '' }));
     }
     
     // Also save platform so full metadata stays synced
     onSavePlatform({
       ...selectedPlatform,
-      url: finalUrl || selectedPlatform.url
+      url: finalUrl
     });
 
     setUrlSavedMessage(true);
@@ -356,7 +366,7 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
       delete next[selectedPlatform.id];
       return next;
     });
-    const defaultUrl = selectedPlatform.url || `https://syncrozz.com/${selectedPlatform.id}`;
+    const defaultUrl = selectedPlatform.url || '';
     setEditingUrl(defaultUrl);
     setRowUrls(prev => ({ ...prev, [selectedPlatform.id]: defaultUrl }));
     
@@ -671,11 +681,12 @@ export const AdminPlatforms: React.FC<AdminPlatformsProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {filteredPlatforms.map((plat, idx) => {
-                    const rowUrl = rowUrls[plat.id] !== undefined ? rowUrls[plat.id] : (customUrls[plat.id] || plat.url || `https://syncrozz.com/${plat.id}`);
+                    const originalRowUrl = customUrls[plat.id] !== undefined ? customUrls[plat.id] : (plat.url || '');
+                    const rowUrl = rowUrls[plat.id] !== undefined ? rowUrls[plat.id] : originalRowUrl;
                     const rowStatus = rowStatuses[plat.id] ?? (plat.status || 'Active');
                     const hasCustomOg = !!customOgImages[plat.id];
                     const isSaved = !!savedRowIds[plat.id];
-                    const isModified = (rowUrl !== (customUrls[plat.id] || plat.url || `https://syncrozz.com/${plat.id}`)) ||
+                    const isModified = (rowUrl !== originalRowUrl) ||
                                        (rowStatus !== (plat.status || 'Active'));
 
                     return (

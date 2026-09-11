@@ -87,9 +87,10 @@ export async function pushClientStateApi(clientState: {
   carouselSlides?: CarouselSlide[];
   deletedDefaultIds?: string[];
   ogImages?: Record<string, string>;
-}): Promise<FullCloudState | null> {
+}, token?: string, email?: string): Promise<FullCloudState | null> {
   try {
-    const headers = getAuthHeaders();
+    const headers = getAuthHeaders(email);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch('/api/sync/push', {
       method: 'POST',
       headers,
@@ -132,6 +133,23 @@ export async function savePlatformApi(platform: PlatformItem, token?: string, em
     return res.ok;
   } catch (error) {
     console.warn('API savePlatform notice:', error);
+    return false;
+  }
+}
+
+export async function saveMultiplePlatformsApi(platforms: PlatformItem[], token?: string, email?: string): Promise<boolean> {
+  try {
+    const headers = getAuthHeaders(email);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/platforms/batch', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ platforms })
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('API saveMultiplePlatforms notice:', error);
     return false;
   }
 }
