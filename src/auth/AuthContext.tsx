@@ -56,16 +56,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const isValid = validateAdminPin(pin);
+      const cleanPin = String(pin || '').trim();
+      const isValid = validateAdminPin(cleanPin);
+
       if (isValid) {
         const adminUser = createAdminSessionFromPin();
         setUser(adminUser);
         saveSession(adminUser);
-        logAuditEvent('PIN_LOGIN_SUCCESS', 'admin', 'SUCCESS', 'Admin Access PIN 5313 disahkan.');
+
+        // Notify server asynchronously to sync session/token (non-blocking)
+        try {
+          fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-admin-pin': '5313'
+            },
+            body: JSON.stringify({ pin: '5313' })
+          }).catch(() => {});
+        } catch {}
+
+        try {
+          logAuditEvent('PIN_LOGIN_SUCCESS', 'admin', 'SUCCESS', 'Admin Access PIN 5313 disahkan.');
+        } catch {}
+
         return true;
       } else {
         setError('PIN tidak sah. Sila cuba lagi.');
-        logAuditEvent('PIN_LOGIN_FAILED', 'unknown', 'DENIED', 'Percubaan PIN gagal.');
+        try {
+          logAuditEvent('PIN_LOGIN_FAILED', 'unknown', 'DENIED', 'Percubaan PIN gagal.');
+        } catch {}
         return false;
       }
     } catch (err: any) {

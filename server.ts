@@ -46,6 +46,7 @@ import {
 
 const MASTER_ADMIN_EMAILS = ['khaikerr@gmail.com', 'admin@syncrozz.com', 'chegukay@gmail.com'];
 const MASTER_ADMIN_EMAIL = 'admin@syncrozz.com';
+const ADMIN_PIN = '5313';
 
 const app = express();
 const PORT = 3000;
@@ -112,6 +113,50 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 
   return res.status(401).json({ error: 'Unauthorized: Sila log masuk ke Admin Panel.' });
 }
+
+// ----------------------------------------------------
+// API ROUTES: ADMIN AUTHENTICATION
+// ----------------------------------------------------
+
+/**
+ * Admin PIN Login Endpoint
+ * Supports direct PIN verification from any web client or external deployment.
+ */
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const rawPin = req.body?.pin ?? req.body?.adminPin ?? req.body?.code ?? req.headers['x-admin-pin'] ?? '';
+    const cleanPin = String(rawPin).trim().replace(/\D/g, '');
+
+    if (cleanPin === '5313' || cleanPin === ADMIN_PIN) {
+      return res.json({
+        success: true,
+        message: 'Akses Admin disahkan.',
+        token: 'pin_session_5313_master',
+        role: 'MASTER_ADMIN',
+        user: {
+          id: 'usr_admin_master',
+          email: MASTER_ADMIN_EMAIL,
+          name: 'SYNCROZZ Admin',
+          role: 'MASTER_ADMIN',
+          picture: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/MAIN/android-chrome-192x192.png',
+          isEmailVerified: true,
+          provider: 'pin',
+          authTime: Date.now()
+        }
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      error: 'PIN tidak sah. Sila cuba lagi.'
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Ralat pelayan semasa log masuk.'
+    });
+  }
+});
 
 // ----------------------------------------------------
 // API ROUTES: UNIFIED CROSS-DEVICE & INCOGNITO CLOUD SYNC
@@ -555,14 +600,18 @@ async function startServer() {
     });
   }
 
-  if (!process.env.VERCEL) {
+  if (!process.env.VERCEL && !process.env.NOW_REGION) {
     app.listen(PORT, '0.0.0.0', async () => {
       console.log(`SYNCROZZ Server running on port ${PORT} with Cloud Persistence & Multi-tier Sync.`);
     });
   }
 }
 
-startServer();
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  startServer().catch((err) => {
+    console.error('Server startup error:', err);
+  });
+}
 
 export default app;
 export { app };
