@@ -36,6 +36,12 @@ service cloud.firestore {
       allow write: if isAuthenticated() || (request.resource.data.deletedIds is list);
     }
 
+    // Public read access for hero carousel slides
+    match /carouselSlides/{slideId} {
+      allow read: if true;
+      allow write: if isAuthenticated() || (request.resource.data.title is string);
+    }
+
     // Inquiries collection: Public can submit inquiries with required fields; reading and mutations restricted
     match /inquiries/{inquiryId} {
       allow create: if request.resource.data.name is string 

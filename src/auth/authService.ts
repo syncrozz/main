@@ -23,6 +23,22 @@ export async function apiAdminLogin(pin: string): Promise<{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: pin.trim() })
     });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const rawText = await res.text().catch(() => '');
+      if (rawText.toLowerCase().includes('server') || res.status >= 500) {
+        return {
+          success: false,
+          error: 'Pelayan sedang dimuat semula atau sibuk. Sila tunggu seketika dan cuba lagi.'
+        };
+      }
+      return {
+        success: false,
+        error: `Ralat respon pelayan (Status: ${res.status}). Sila cuba lagi.`
+      };
+    }
+
     const data = await res.json();
     if (!res.ok || !data.success) {
       return {
@@ -36,10 +52,10 @@ export async function apiAdminLogin(pin: string): Promise<{
       user: data.user
     };
   } catch (err) {
-    console.error('Network error during PIN validation:', err);
+    console.warn('Network notice during PIN validation:', err);
     return {
       success: false,
-      error: 'Ralat sambungan pelayan semasa mengesahkan PIN.'
+      error: 'Ralat sambungan pelayan semasa mengesahkan PIN. Sila pastikan pelayan aktif.'
     };
   }
 }
@@ -56,6 +72,8 @@ export async function apiVerifySession(token: string): Promise<AuthUser | null> 
       }
     });
     if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
     const data = await res.json();
     return data.user || null;
   } catch {

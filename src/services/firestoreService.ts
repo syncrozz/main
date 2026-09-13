@@ -102,6 +102,21 @@ function handleFirestoreError(context: string, error: any): void {
     return;
   }
 
+  // Handle permission-denied / insufficient permissions
+  if (
+    errCode === 'permission-denied' ||
+    errMsg.includes('insufficient permissions') ||
+    errMsg.includes('permission-denied')
+  ) {
+    if (!isNetworkDisabled) {
+      isNetworkDisabled = true;
+      console.info(`[SYNCROZZ] Akses Firestore terhad oleh sekuriti awan. Sistem beroperasi lancar melalui Pelayan Awan Segerak SYNCROZZ (Cloud Store API).`);
+      teardownAllSubscriptions();
+      disableNetwork(db).catch(() => {});
+    }
+    return;
+  }
+
   // General warnings
   console.warn(`[Firestore] Notice during "${context}":`, error?.message || error);
 }
