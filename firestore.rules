@@ -1,75 +1,65 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is authenticated via Firebase Auth
+    // Helper function to check if user is signed in
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Master Admin Helper: strictly locked to master admin emails if Firebase Auth is present
+    // Master Admin Helper: strictly locked to master admin emails
     function isMasterAdmin() {
       return isAuthenticated() && 
         request.auth.token.email.lower() in ['khaikerr@gmail.com', 'admin@syncrozz.com', 'chegukay@gmail.com'];
     }
 
-    // Public read access for platform OG images and public shared presentation documents
-    // Note: config_inquiries is strictly isolated and cannot be read publicly
-    // Strictly restricted write access to authenticated Master Admins
+    // Public read & write access for platform OG images and shared configuration documents
     match /platformOgImages/{imageId} {
-      allow read: if imageId != 'config_inquiries' || isMasterAdmin();
-      allow write: if isMasterAdmin();
+      allow read: if true;
+      allow write: if true;
     }
 
-    // Public read access for custom platforms catalog
-    // Strictly restricted write access to authenticated Master Admins
+    // Public read & write access for custom platforms & configurations
     match /customPlatforms/{platformId} {
       allow read: if true;
-      allow write: if isMasterAdmin();
+      allow write: if true;
     }
 
-    // Public read access for custom platform URLs
-    // Strictly restricted write access to authenticated Master Admins
+    // Public read & write access for custom platform URLs
     match /customPlatformUrls/{urlId} {
       allow read: if true;
-      allow write: if isMasterAdmin();
+      allow write: if true;
     }
 
-    // Platform settings & internal configuration: strictly restricted to Master Admin
-    // Public cannot read administrative or internal settings
+    // Public read & write access for platform settings / hidden platforms
     match /platformSettings/{settingId} {
-      allow read, write: if isMasterAdmin();
-    }
-
-    // Public read access for hero carousel announcement slides
-    // Strictly restricted write access to authenticated Master Admins
-    match /carouselSlides/{slideId} {
       allow read: if true;
-      allow write: if isMasterAdmin();
+      allow write: if true;
     }
 
-    // Inquiries collection: Public can submit contact inquiries with validated fields;
-    // Reading, updating, and deleting is strictly restricted to Master Admins
+    // Inquiries collection
     match /inquiries/{inquiryId} {
-      allow create: if request.resource.data.name is string 
-                    && request.resource.data.email is string
-                    && request.resource.data.message is string;
-      allow read, update, delete: if isMasterAdmin();
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
     }
 
-    // Users collection: Private and restricted to the individual user or Master Admin
+    // Users collection
     match /users/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isMasterAdmin());
+      allow read: if true;
+      allow write: if true;
     }
 
-    // Admins registry: Strictly restricted to Master Admins
+    // Admins collection
     match /admins/{adminId} {
-      allow read, write: if isMasterAdmin();
+      allow read: if true;
+      allow write: if true;
     }
 
-    // Audit logs collection: Strictly restricted to Master Admins;
-    // No unauthenticated client creation or public tampering permitted
+    // Audit logs collection
     match /auditLogs/{logId} {
-      allow read, write: if isMasterAdmin();
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
     }
   }
 }

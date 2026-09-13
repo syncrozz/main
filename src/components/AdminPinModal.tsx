@@ -13,7 +13,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { loginWithPin, error } = useAuth();
+  const { loginWithPin } = useAuth();
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,13 +58,13 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
     } else {
       setIsSubmitting(false);
       setPin('');
-      setErrorMsg(error || 'PIN tidak sah. Sila cuba lagi.');
+      setErrorMsg('PIN tidak sah. Sila cuba lagi.');
       // Refocus immediately so user can type again right away
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
     }
-  }, [isSubmitting, loginWithPin, onClose, onSuccess, error]);
+  }, [isSubmitting, loginWithPin, onClose, onSuccess]);
 
   // Handle keyboard inputs: auto-submit on 4th digit
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

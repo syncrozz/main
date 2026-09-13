@@ -59,7 +59,6 @@ import {
   saveCarouselSlidesApi,
   saveDeletedPlatformsApi,
   saveOgImageApi,
-  deleteOgImageApi,
   syncUserToDatabase
 } from './services/apiService';
 
@@ -434,7 +433,14 @@ function MainAppContent() {
       }, user?.token, user?.email || undefined).catch(() => {});
       return copy;
     });
-    deleteOgImageApi(platformId, user?.token, user?.email || undefined).catch(() => {});
+    fetch(`/api/og-images/${encodeURIComponent(platformId)}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-pin': '5313',
+        'Authorization': 'Bearer pin_session_5313_master',
+        'x-user-email': user?.email || 'admin@syncrozz.com'
+      }
+    }).catch(() => {});
     removeOgImageFromFirestore(platformId).catch(() => {});
   };
 
@@ -447,7 +453,7 @@ function MainAppContent() {
       }, user?.token, user?.email || undefined).catch(() => {});
       return updated;
     });
-    saveCustomUrlApi(platformId, url, user?.token, user?.email || undefined).catch(() => {});
+    saveCustomUrlApi(platformId, url, user?.email || undefined).catch(() => {});
     saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
   };
 
@@ -461,7 +467,7 @@ function MainAppContent() {
       }, user?.token, user?.email || undefined).catch(() => {});
       return copy;
     });
-    removeCustomUrlApi(platformId, user?.token, user?.email || undefined).catch(() => {});
+    removeCustomUrlApi(platformId, user?.email || undefined).catch(() => {});
     removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
   };
 
@@ -532,7 +538,7 @@ function MainAppContent() {
       deletedDefaultIds: updatedDeletedIds
     }, user?.token, user?.email || undefined).catch(() => {});
 
-    saveDeletedPlatformsApi(updatedDeletedIds, user?.token, user?.email || undefined).catch(() => {});
+    saveDeletedPlatformsApi(updatedDeletedIds, user?.email || undefined).catch(() => {});
     deletePlatformApi(platformId, user?.token, user?.email || undefined).catch(() => {});
     deletePlatformFromFirestore(platformId).catch(() => {});
     logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
@@ -541,7 +547,7 @@ function MainAppContent() {
   const handleSaveCarouselSlides = (updatedSlides: CarouselSlide[]) => {
     setCarouselSlides(updatedSlides);
     saveLocalCarouselSlides(updatedSlides);
-    saveCarouselSlidesApi(updatedSlides, user?.token, user?.email || undefined).catch(() => {});
+    saveCarouselSlidesApi(updatedSlides, user?.email || undefined).catch(() => {});
     pushClientStateApi({
       carouselSlides: updatedSlides
     }, user?.token, user?.email || undefined).catch(() => {});

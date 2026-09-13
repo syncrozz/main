@@ -9,7 +9,7 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessRedirect }) => {
-  const { loginWithPin, error } = useAuth();
+  const { loginWithPin } = useAuth();
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,12 +51,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToHome, onSuccessR
     } else {
       setIsSubmitting(false);
       setPin('');
-      setErrorMsg(error || 'PIN tidak sah. Sila cuba lagi.');
+      setErrorMsg('PIN tidak sah. Sila cuba lagi.');
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
     }
-  }, [isSubmitting, loginWithPin, onSuccessRedirect, error]);
+  }, [isSubmitting, loginWithPin, onSuccessRedirect]);
 
   // Handle keyboard inputs: auto-submit on 4th digit
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

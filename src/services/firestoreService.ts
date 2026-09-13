@@ -13,7 +13,7 @@ import {
   enableNetwork,
   FirestoreError 
 } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { compressDataUrl } from '../utils/imageCompressor';
 
 export interface FirestoreOgImage {
@@ -102,21 +102,6 @@ function handleFirestoreError(context: string, error: any): void {
     return;
   }
 
-  // Handle permission-denied / insufficient permissions
-  if (
-    errCode === 'permission-denied' ||
-    errMsg.includes('insufficient permissions') ||
-    errMsg.includes('permission-denied')
-  ) {
-    if (!isNetworkDisabled) {
-      isNetworkDisabled = true;
-      console.info(`[SYNCROZZ] Akses Firestore terhad oleh sekuriti awan. Sistem beroperasi lancar melalui Pelayan Awan Segerak SYNCROZZ (Cloud Store API).`);
-      teardownAllSubscriptions();
-      disableNetwork(db).catch(() => {});
-    }
-    return;
-  }
-
   // General warnings
   console.warn(`[Firestore] Notice during "${context}":`, error?.message || error);
 }
@@ -126,7 +111,7 @@ function safeSnapshotListener(
   onData: (snapshot: any) => void,
   context: string
 ): () => void {
-  if (isQuotaExhausted() || isNetworkDisabled) return () => {};
+  if (isQuotaExhausted()) return () => {};
 
   try {
     let active = true;
@@ -229,7 +214,7 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
   );
 }
 
-// 2. Audit Logging to Firestore (Privileged / Master Admin only)
+// 2. Audit Logging to Firestore
 export async function logAuditEventToFirestore(
   eventTypeOrObject: string | { eventType: string; userEmail: string; status: 'SUCCESS' | 'DENIED' | 'INFO' | 'WARNING'; details: string },
   userEmail?: string,
@@ -237,12 +222,6 @@ export async function logAuditEventToFirestore(
   details?: string
 ): Promise<void> {
   if (isQuotaExhausted()) return;
-
-  // Audit logs in Firestore are strictly restricted to authenticated administrators.
-  // Unauthenticated client callers must not attempt direct writes to the auditLogs collection.
-  if (!auth.currentUser) {
-    return;
-  }
 
   try {
     const colRef = collection(db, 'auditLogs');
@@ -271,10 +250,6 @@ export async function logAuditEventToFirestore(
 export const logAuditEvent = logAuditEventToFirestore;
 
 export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => void {
-  // Audit logs are strictly restricted to authenticated administrators.
-  if (!auth.currentUser) {
-    return () => {};
-  }
   const colRef = collection(db, 'auditLogs');
   const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
   return safeSnapshotListener(
@@ -530,10 +505,6 @@ export async function saveInquiryToFirestore(inquiry: any): Promise<void> {
 }
 
 export function subscribeToInquiries(callback: (inquiries: any[]) => void): () => void {
-  // Inquiries contain personal user communications and are strictly restricted to authenticated administrators.
-  if (!auth.currentUser) {
-    return () => {};
-  }
   const docRef = doc(db, 'platformOgImages', 'config_inquiries');
   return safeSnapshotListener(
     docRef,

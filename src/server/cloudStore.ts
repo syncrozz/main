@@ -12,7 +12,6 @@ export interface CloudStoreData {
   deletedDefaultIds: string[];
   ogImages: Record<string, string>;
   inquiries: any[];
-  secondaryAdmins: string[];
 }
 
 const STORE_FILE_PATH = path.join(process.cwd(), '.syncrozz_store.json');
@@ -26,8 +25,7 @@ let memoryStore: CloudStoreData = {
   carouselSlides: [],
   deletedDefaultIds: [],
   ogImages: {},
-  inquiries: [],
-  secondaryAdmins: []
+  inquiries: []
 };
 
 let isInitialized = false;
@@ -58,8 +56,7 @@ export function loadCloudStore(): CloudStoreData {
           carouselSlides: Array.isArray(parsed.carouselSlides) ? parsed.carouselSlides : [],
           deletedDefaultIds: Array.isArray(parsed.deletedDefaultIds) ? parsed.deletedDefaultIds : [],
           ogImages: parsed.ogImages || {},
-          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : [],
-          secondaryAdmins: Array.isArray(parsed.secondaryAdmins) ? parsed.secondaryAdmins : []
+          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : []
         };
 
         if (memoryStore.deletedDefaultIds.length > 0) {
@@ -79,19 +76,6 @@ export function loadCloudStore(): CloudStoreData {
 export function getFullCloudState(): CloudStoreData {
   loadCloudStore();
   return { ...memoryStore };
-}
-
-export function getPublicCloudState(): Omit<CloudStoreData, 'inquiries' | 'secondaryAdmins'> {
-  loadCloudStore();
-  return {
-    version: memoryStore.version,
-    lastUpdated: memoryStore.lastUpdated,
-    platforms: memoryStore.platforms,
-    customUrls: memoryStore.customUrls,
-    carouselSlides: memoryStore.carouselSlides,
-    deletedDefaultIds: memoryStore.deletedDefaultIds,
-    ogImages: memoryStore.ogImages
-  };
 }
 
 export function getStorePlatforms(): PlatformItem[] {
@@ -292,38 +276,4 @@ export function deleteStoreInquiry(id: string | number): void {
 export function getStoreInquiries(): any[] {
   loadCloudStore();
   return memoryStore.inquiries || [];
-}
-
-export function getStoreSecondaryAdmins(): string[] {
-  loadCloudStore();
-  return memoryStore.secondaryAdmins || [];
-}
-
-export function addStoreSecondaryAdmin(email: string): string[] {
-  loadCloudStore();
-  if (!memoryStore.secondaryAdmins) {
-    memoryStore.secondaryAdmins = [];
-  }
-  const clean = email.trim().toLowerCase();
-  if (!memoryStore.secondaryAdmins.includes(clean)) {
-    memoryStore.secondaryAdmins.push(clean);
-    memoryStore.version += 1;
-    memoryStore.lastUpdated = Date.now();
-    saveStoreToDisk();
-  }
-  return [...memoryStore.secondaryAdmins];
-}
-
-export function removeStoreSecondaryAdmin(email: string): string[] {
-  loadCloudStore();
-  if (!memoryStore.secondaryAdmins) {
-    memoryStore.secondaryAdmins = [];
-    return [];
-  }
-  const clean = email.trim().toLowerCase();
-  memoryStore.secondaryAdmins = memoryStore.secondaryAdmins.filter((e) => e.toLowerCase() !== clean);
-  memoryStore.version += 1;
-  memoryStore.lastUpdated = Date.now();
-  saveStoreToDisk();
-  return [...memoryStore.secondaryAdmins];
 }

@@ -51,6 +51,7 @@ import { getCustomPlatformUrls, getCustomOgImages } from '../../utils/ogStorage'
 import { getLocalCarouselSlides } from '../../utils/carouselStorage';
 import { checkCloudVersionApi, pushClientStateApi } from '../../services/apiService';
 import { db } from '../../lib/firebase';
+import firebaseConfig from '../../../firebase-applet-config.json';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -145,7 +146,7 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
       const errCode = e?.code || '';
       if (errCode === 'not-found' || errMsg.includes('NOT_FOUND') || errMsg.includes('does not exist') || errMsg.includes('404')) {
         results.firestoreStatus = 'not_found';
-        results.firestoreDetails = `Pangkalan data Firestore (ai-studio-main-ae8ef075-73bb-4826-a99c-f0016fdf4745) BELUM wujud di Google Cloud. Oleh itu, peranti ini berfungsi dalam mod storan setempat (localStorage) sahaja.`;
+        results.firestoreDetails = `Pangkalan data Firestore (${firebaseConfig.firestoreDatabaseId || 'default'}) BELUM wujud di Google Cloud. Oleh itu, peranti ini berfungsi dalam mod storan setempat (localStorage) sahaja.`;
       } else if (errCode === 'permission-denied' || errMsg.includes('permission-denied')) {
         results.firestoreStatus = 'error';
         results.firestoreDetails = `Kebenaran Firestore disekat (Permission Denied). Sila semak firestore.rules.`;
