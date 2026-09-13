@@ -537,7 +537,7 @@ async function startServer() {
   } else {
     let distPath = path.join(process.cwd(), 'dist');
     if (!fs.existsSync(path.join(distPath, 'index.html'))) {
-      if (fs.existsSync(path.join(__dirname, 'index.html'))) {
+      if (typeof __dirname !== 'undefined' && fs.existsSync(path.join(__dirname, 'index.html'))) {
         distPath = __dirname;
       } else if (fs.existsSync(path.join(process.cwd(), 'index.html'))) {
         distPath = process.cwd();

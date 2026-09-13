@@ -32,19 +32,54 @@ export interface FirestoreAuditLog {
   ip?: string;
 }
 
-// Circuit breaker for Firestore quota or resource-exhaustion
+// Circuit breaker for Firestore quota, missing database, or offline status
 let isNetworkDisabled = false;
+let isDatabaseNotFound = false;
 let firestoreQuotaExhaustedUntil = 0;
 let reEnableTimer: ReturnType<typeof setTimeout> | null = null;
+const activeUnsubscribes = new Set<() => void>();
 
 export function isQuotaExhausted(): boolean {
-  return isNetworkDisabled || Date.now() < firestoreQuotaExhaustedUntil;
+  return isNetworkDisabled || isDatabaseNotFound || Date.now() < firestoreQuotaExhaustedUntil;
+}
+
+export function isFirestoreAvailable(): boolean {
+  return !isNetworkDisabled && !isDatabaseNotFound && Date.now() >= firestoreQuotaExhaustedUntil;
+}
+
+export function teardownAllSubscriptions(): void {
+  activeUnsubscribes.forEach((unsub) => {
+    try {
+      unsub();
+    } catch {}
+  });
+  activeUnsubscribes.clear();
 }
 
 function handleFirestoreError(context: string, error: any): void {
   const errCode = error?.code || '';
   const errMsg = error?.message || (typeof error === 'string' ? error : '');
 
+  // Handle missing or unprovisioned Firestore database (HTTP 404 / NOT_FOUND)
+  if (
+    errCode === 'not-found' ||
+    errMsg.includes('not found') ||
+    errMsg.includes('NOT_FOUND') ||
+    errMsg.includes('does not exist') ||
+    errMsg.includes('404') ||
+    errMsg.includes('Database')
+  ) {
+    if (!isDatabaseNotFound) {
+      isDatabaseNotFound = true;
+      isNetworkDisabled = true;
+      console.info(`[SYNCROZZ] Pangkalan data Firestore belum wujud di Google Cloud. Beroperasi secara lancar dalam mod storan setempat (local & server store).`);
+      teardownAllSubscriptions();
+      disableNetwork(db).catch(() => {});
+    }
+    return;
+  }
+
+  // Handle resource exhausted or quota exceeded
   if (
     errCode === 'resource-exhausted' ||
     errCode === 'unavailable' ||
@@ -54,7 +89,8 @@ function handleFirestoreError(context: string, error: any): void {
     firestoreQuotaExhaustedUntil = Date.now() + 5 * 60 * 1000;
     if (!isNetworkDisabled) {
       isNetworkDisabled = true;
-      console.warn(`[Firestore] Quota reached during "${context}". Disabling Firestore network to prevent backend overload and falling back to local/server store.`);
+      console.warn(`[Firestore] Had kuota dicapai semasa "${context}". Mod storan setempat diaktifkan.`);
+      teardownAllSubscriptions();
       disableNetwork(db).catch(() => {});
 
       if (reEnableTimer) clearTimeout(reEnableTimer);
@@ -63,8 +99,61 @@ function handleFirestoreError(context: string, error: any): void {
         enableNetwork(db).catch(() => {});
       }, 5 * 60 * 1000);
     }
-  } else {
-    console.warn(`[Firestore] Notice during "${context}":`, error?.message || error);
+    return;
+  }
+
+  // General warnings
+  console.warn(`[Firestore] Notice during "${context}":`, error?.message || error);
+}
+
+function safeSnapshotListener(
+  ref: any,
+  onData: (snapshot: any) => void,
+  context: string
+): () => void {
+  if (isQuotaExhausted()) return () => {};
+
+  try {
+    let active = true;
+    let cleanupFn: (() => void) | null = null;
+
+    const unsub = onSnapshot(
+      ref,
+      (snapshot) => {
+        if (!active) return;
+        try {
+          onData(snapshot);
+        } catch (err) {
+          console.warn(`[Firestore] Ralat memproses snapshot "${context}":`, err);
+        }
+      },
+      (error) => {
+        active = false;
+        if (cleanupFn) {
+          activeUnsubscribes.delete(cleanupFn);
+        }
+        try {
+          unsub();
+        } catch {}
+        handleFirestoreError(context, error);
+      }
+    );
+
+    cleanupFn = () => {
+      active = false;
+      if (cleanupFn) {
+        activeUnsubscribes.delete(cleanupFn);
+      }
+      try {
+        unsub();
+      } catch {}
+    };
+
+    activeUnsubscribes.add(cleanupFn);
+    return cleanupFn;
+  } catch (e) {
+    handleFirestoreError(`${context} init`, e);
+    return () => {};
   }
 }
 
@@ -104,14 +193,13 @@ export async function removeOgImageFromFirestore(platformId: string): Promise<vo
 }
 
 export function subscribeToOgImages(callback: (images: Record<string, string>) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const colRef = collection(db, 'platformOgImages');
-    return onSnapshot(colRef, (snapshot) => {
+  const colRef = collection(db, 'platformOgImages');
+  return safeSnapshotListener(
+    colRef,
+    (snapshot) => {
       if (snapshot.empty) return;
       const result: Record<string, string> = {};
-      snapshot.forEach((docSnap) => {
+      snapshot.forEach((docSnap: any) => {
         if (docSnap.id.startsWith('config_') || docSnap.id.startsWith('__')) return;
         const data = docSnap.data() as FirestoreOgImage;
         if (data.platformId && data.imageUrl) {
@@ -121,13 +209,9 @@ export function subscribeToOgImages(callback: (images: Record<string, string>) =
       if (Object.keys(result).length > 0) {
         callback(result);
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToOgImages', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToOgImages init', e);
-    return () => {};
-  }
+    },
+    'subscribeToOgImages'
+  );
 }
 
 // 2. Audit Logging to Firestore
@@ -166,21 +250,16 @@ export async function logAuditEventToFirestore(
 export const logAuditEvent = logAuditEventToFirestore;
 
 export function subscribeToAuditLogs(callback: (logs: any[]) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const colRef = collection(db, 'auditLogs');
-    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
-    return onSnapshot(q, (snapshot) => {
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const colRef = collection(db, 'auditLogs');
+  const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+  return safeSnapshotListener(
+    q,
+    (snapshot) => {
+      const logs = snapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
       callback(logs);
-    }, (error) => {
-      handleFirestoreError('subscribeToAuditLogs', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToAuditLogs init', e);
-    return () => {};
-  }
+    },
+    'subscribeToAuditLogs'
+  );
 }
 
 // 3. Dynamic Platforms Synchronization with Firestore
@@ -237,24 +316,19 @@ export async function deletePlatformFromFirestore(platformId: string): Promise<v
 }
 
 export function subscribeToCustomPlatforms(callback: (platforms: any[]) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
-    return onSnapshot(docRef, (snapshot) => {
+  const docRef = doc(db, 'platformOgImages', 'config_custom_platforms');
+  return safeSnapshotListener(
+    docRef,
+    (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && Array.isArray(data.platforms)) {
           callback(data.platforms);
         }
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToCustomPlatforms', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToCustomPlatforms init', e);
-    return () => {};
-  }
+    },
+    'subscribeToCustomPlatforms'
+  );
 }
 
 // 4. Custom Platform URLs Synchronization with Firestore
@@ -299,24 +373,19 @@ export async function removeCustomPlatformUrlFromFirestore(platformId: string): 
 }
 
 export function subscribeToCustomPlatformUrls(callback: (urls: Record<string, string>) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
-    return onSnapshot(docRef, (snapshot) => {
+  const docRef = doc(db, 'platformOgImages', 'config_custom_urls');
+  return safeSnapshotListener(
+    docRef,
+    (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && typeof data.urls === 'object') {
           callback(data.urls);
         }
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToCustomPlatformUrls', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToCustomPlatformUrls init', e);
-    return () => {};
-  }
+    },
+    'subscribeToCustomPlatformUrls'
+  );
 }
 
 // 5. Deleted Default Platforms Synchronization
@@ -336,24 +405,19 @@ export async function saveDeletedDefaultPlatformIdsToFirestore(ids: string[], us
 }
 
 export function subscribeToDeletedDefaultPlatforms(callback: (ids: string[]) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
-    return onSnapshot(docRef, (snapshot) => {
+  const docRef = doc(db, 'platformOgImages', 'config_deleted_platforms');
+  return safeSnapshotListener(
+    docRef,
+    (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && Array.isArray(data.deletedIds)) {
           callback(data.deletedIds);
         }
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToDeletedDefaultPlatforms', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToDeletedDefaultPlatforms init', e);
-    return () => {};
-  }
+    },
+    'subscribeToDeletedDefaultPlatforms'
+  );
 }
 
 // 6. Hero Carousel Slides Synchronization
@@ -388,24 +452,19 @@ export async function saveCarouselSlidesToFirestore(slides: any[], userEmail?: s
 }
 
 export function subscribeToCarouselSlides(callback: (slides: any[]) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
-    return onSnapshot(docRef, (snapshot) => {
+  const docRef = doc(db, 'platformOgImages', 'config_hero_carousel');
+  return safeSnapshotListener(
+    docRef,
+    (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && Array.isArray(data.slides)) {
           callback(data.slides);
         }
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToCarouselSlides', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToCarouselSlides init', e);
-    return () => {};
-  }
+    },
+    'subscribeToCarouselSlides'
+  );
 }
 
 // 7. Contact Inquiries Synchronization (Real-time sync to all admin tabs)
@@ -446,24 +505,19 @@ export async function saveInquiryToFirestore(inquiry: any): Promise<void> {
 }
 
 export function subscribeToInquiries(callback: (inquiries: any[]) => void): () => void {
-  if (isQuotaExhausted()) return () => {};
-
-  try {
-    const docRef = doc(db, 'platformOgImages', 'config_inquiries');
-    return onSnapshot(docRef, (snapshot) => {
+  const docRef = doc(db, 'platformOgImages', 'config_inquiries');
+  return safeSnapshotListener(
+    docRef,
+    (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         callback(data.inquiries || []);
       } else {
         callback([]);
       }
-    }, (error) => {
-      handleFirestoreError('subscribeToInquiries', error);
-    });
-  } catch (e) {
-    handleFirestoreError('subscribeToInquiries init', e);
-    return () => {};
-  }
+    },
+    'subscribeToInquiries'
+  );
 }
 
 export async function updateInquiryStatusInFirestore(

@@ -48,5 +48,19 @@ try {
   dbInstance = null;
 }
 
-export const db = dbInstance;
+const noOp = {
+  findMany: async () => [],
+  findFirst: async () => null,
+  findUnique: async () => null,
+  create: async (d: any) => d?.data ?? {},
+  update: async (d: any) => d?.data ?? {},
+  delete: async () => ({}),
+};
+
+const mockDb = new Proxy({}, {
+  get: (_, prop) => (prop === 'query' ? new Proxy({}, { get: () => noOp }) : async () => []),
+});
+
+export const db = dbInstance ?? mockDb;
+
 
