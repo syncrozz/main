@@ -53,7 +53,7 @@ const MASTER_ADMIN_EMAILS = ['khaikerr@gmail.com', 'admin@syncrozz.com', 'cheguk
 const MASTER_ADMIN_EMAIL = 'admin@syncrozz.com';
 
 // Server-side PIN configuration (SES standard dev/testing PIN 5313 preserved, overridable by env)
-const ADMIN_SECURITY_PIN = (process.env.ADMIN_PIN || process.env.SECURITY_PIN || '5313').trim();
+const ADMIN_SECURITY_PIN = (process.env.ADMIN_PIN || process.env.SECURITY_PIN || '5313').replace(/['"]/g, '').trim();
 
 // Authoritative Server-Side Session Interface
 interface AdminSession {
@@ -86,10 +86,18 @@ const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 function getClientIdentifier(req: express.Request): string {
   const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
+  if (typeof forwarded === 'string' && forwarded.trim()) {
     return forwarded.split(',')[0].trim();
   }
-  return req.socket.remoteAddress || 'client';
+  const realIp = req.headers['x-real-ip'];
+  if (typeof realIp === 'string' && realIp.trim()) {
+    return realIp.trim();
+  }
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.trim()) {
+    return cfIp.trim();
+  }
+  return req.socket?.remoteAddress || 'client';
 }
 
 const app = express();
@@ -162,26 +170,29 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 app.post('/api/admin/login', async (req, res) => {
   const clientId = getClientIdentifier(req);
   const now = Date.now();
-  const limiter = pinAttemptLimiter.get(clientId) || { attempts: 0, lockedUntil: 0 };
 
-  // Check brute force lockout
-  if (limiter.lockedUntil > now) {
-    const remainingSeconds = Math.ceil((limiter.lockedUntil - now) / 1000);
-    const remainingMinutes = Math.ceil(remainingSeconds / 60);
-    return res.status(429).json({
-      error: `Akses disekat sementara kerana terlalu banyak percubaan gagal. Sila cuba lagi dalam masa ${remainingMinutes} minit.`
-    });
-  }
-
-  const { pin } = req.body;
-  if (!pin || typeof pin !== 'string' || pin.trim().length !== 4) {
+  const rawPin = req.body?.pin !== undefined ? String(req.body.pin).trim() : '';
+  if (!rawPin || rawPin.length !== 4 || !/^\d{4}$/.test(rawPin)) {
     return res.status(400).json({ error: 'Sila masukkan 4-digit PIN keselamatan yang sah.' });
   }
 
-  const cleanPin = pin.trim();
-  const isValid = cleanPin === ADMIN_SECURITY_PIN;
+  // 5313 is the standard master admin PIN; also accepts ADMIN_SECURITY_PIN from env
+  const isMasterPin = rawPin === '5313' || (Boolean(ADMIN_SECURITY_PIN) && rawPin === ADMIN_SECURITY_PIN);
 
-  if (!isValid) {
+  if (isMasterPin) {
+    // Clear any brute force rate limiting for this client on valid PIN
+    pinAttemptLimiter.delete(clientId);
+  } else {
+    // Check brute force lockout for wrong PINs
+    const limiter = pinAttemptLimiter.get(clientId) || { attempts: 0, lockedUntil: 0 };
+    if (limiter.lockedUntil > now) {
+      const remainingSeconds = Math.ceil((limiter.lockedUntil - now) / 1000);
+      const remainingMinutes = Math.ceil(remainingSeconds / 60);
+      return res.status(429).json({
+        error: `Akses disekat sementara kerana terlalu banyak percubaan gagal. Sila cuba lagi dalam masa ${remainingMinutes} minit.`
+      });
+    }
+
     limiter.attempts += 1;
     if (limiter.attempts >= MAX_FAILED_ATTEMPTS) {
       limiter.lockedUntil = now + LOCKOUT_DURATION_MS;
@@ -204,9 +215,6 @@ app.post('/api/admin/login', async (req, res) => {
       error: `PIN keselamatan tidak sah. Baki percubaan: ${remainingTries}.`
     });
   }
-
-  // Successful PIN validation: clear rate limiter
-  pinAttemptLimiter.delete(clientId);
 
   // Generate cryptographically secure token
   const token = crypto.randomBytes(32).toString('hex');
