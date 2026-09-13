@@ -12,37 +12,43 @@ service cloud.firestore {
         request.auth.token.email.lower() in ['khaikerr@gmail.com', 'admin@syncrozz.com', 'chegukay@gmail.com'];
     }
 
-    // Public read access for platform OG images and shared configuration documents
+    // Public read access for platform OG images and public shared presentation documents
+    // Note: config_inquiries is strictly isolated and cannot be read publicly
+    // Strictly restricted write access to authenticated Master Admins
     match /platformOgImages/{imageId} {
-      allow read: if true;
-      allow write: if isAuthenticated() || (request.resource.data.imageUrl is string);
+      allow read: if imageId != 'config_inquiries' || isMasterAdmin();
+      allow write: if isMasterAdmin();
     }
 
-    // Public read access for custom platforms & configurations
+    // Public read access for custom platforms catalog
+    // Strictly restricted write access to authenticated Master Admins
     match /customPlatforms/{platformId} {
       allow read: if true;
-      allow write: if isAuthenticated() || (request.resource.data.title is string);
+      allow write: if isMasterAdmin();
     }
 
     // Public read access for custom platform URLs
+    // Strictly restricted write access to authenticated Master Admins
     match /customPlatformUrls/{urlId} {
       allow read: if true;
-      allow write: if isAuthenticated() || (request.resource.data.url is string);
+      allow write: if isMasterAdmin();
     }
 
-    // Public read access for platform settings / hidden platforms
+    // Platform settings & internal configuration: strictly restricted to Master Admin
+    // Public cannot read administrative or internal settings
     match /platformSettings/{settingId} {
-      allow read: if true;
-      allow write: if isAuthenticated() || (request.resource.data.deletedIds is list);
+      allow read, write: if isMasterAdmin();
     }
 
-    // Public read access for hero carousel slides
+    // Public read access for hero carousel announcement slides
+    // Strictly restricted write access to authenticated Master Admins
     match /carouselSlides/{slideId} {
       allow read: if true;
-      allow write: if isAuthenticated() || (request.resource.data.title is string);
+      allow write: if isMasterAdmin();
     }
 
-    // Inquiries collection: Public can submit inquiries with required fields; reading and mutations restricted
+    // Inquiries collection: Public can submit contact inquiries with validated fields;
+    // Reading, updating, and deleting is strictly restricted to Master Admins
     match /inquiries/{inquiryId} {
       allow create: if request.resource.data.name is string 
                     && request.resource.data.email is string
@@ -50,7 +56,7 @@ service cloud.firestore {
       allow read, update, delete: if isMasterAdmin();
     }
 
-    // Users collection: Private and restricted
+    // Users collection: Private and restricted to the individual user or Master Admin
     match /users/{userId} {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isMasterAdmin());
     }
@@ -60,10 +66,10 @@ service cloud.firestore {
       allow read, write: if isMasterAdmin();
     }
 
-    // Audit logs collection: Can append audit records, but logs cannot be read or tampered by public
+    // Audit logs collection: Strictly restricted to Master Admins;
+    // No unauthenticated client creation or public tampering permitted
     match /auditLogs/{logId} {
-      allow create: if request.resource.data.action is string || request.resource.data.eventType is string;
-      allow read, update, delete: if isMasterAdmin();
+      allow read, write: if isMasterAdmin();
     }
   }
 }

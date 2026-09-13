@@ -81,12 +81,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     // 2. Sync to Firestore for real-time notification
     try {
       await saveInquiryToFirestore(newInquiry);
-      await logAuditEvent({
-        eventType: 'NEW_INQUIRY',
-        userEmail: formData.email,
-        status: 'INFO',
-        details: `Pertanyaan baru dari ${formData.name} untuk ${formData.platformInterest}`
-      });
     } catch (err) {
       console.warn('Firestore inquiry sync notice:', err);
     }
