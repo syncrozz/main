@@ -1,65 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is signed in
+    // Helper function to check if user is authenticated via Firebase Auth
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Master Admin Helper: strictly locked to master admin emails
+    // Master Admin Helper: strictly locked to master admin emails if Firebase Auth is present
     function isMasterAdmin() {
       return isAuthenticated() && 
         request.auth.token.email.lower() in ['khaikerr@gmail.com', 'admin@syncrozz.com', 'chegukay@gmail.com'];
     }
 
-    // Public read & write access for platform OG images and shared configuration documents
+    // Public read access for platform OG images and shared configuration documents
     match /platformOgImages/{imageId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAuthenticated() || (request.resource.data.imageUrl is string);
     }
 
-    // Public read & write access for custom platforms & configurations
+    // Public read access for custom platforms & configurations
     match /customPlatforms/{platformId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAuthenticated() || (request.resource.data.title is string);
     }
 
-    // Public read & write access for custom platform URLs
+    // Public read access for custom platform URLs
     match /customPlatformUrls/{urlId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAuthenticated() || (request.resource.data.url is string);
     }
 
-    // Public read & write access for platform settings / hidden platforms
+    // Public read access for platform settings / hidden platforms
     match /platformSettings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAuthenticated() || (request.resource.data.deletedIds is list);
     }
 
-    // Inquiries collection
+    // Inquiries collection: Public can submit inquiries with required fields; reading and mutations restricted
     match /inquiries/{inquiryId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if true;
+      allow create: if request.resource.data.name is string 
+                    && request.resource.data.email is string
+                    && request.resource.data.message is string;
+      allow read, update, delete: if isMasterAdmin();
     }
 
-    // Users collection
+    // Users collection: Private and restricted
     match /users/{userId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isMasterAdmin());
     }
 
-    // Admins collection
+    // Admins registry: Strictly restricted to Master Admins
     match /admins/{adminId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isMasterAdmin();
     }
 
-    // Audit logs collection
+    // Audit logs collection: Can append audit records, but logs cannot be read or tampered by public
     match /auditLogs/{logId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if true;
+      allow create: if request.resource.data.action is string || request.resource.data.eventType is string;
+      allow read, update, delete: if isMasterAdmin();
     }
   }
 }

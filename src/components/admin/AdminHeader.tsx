@@ -161,10 +161,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="bg-slate-50/90 border-t border-slate-200/80 shadow-2xs">
+      {/* Navigation Sub-Tabs - High Prominence Admin Control Deck */}
+      <div className="bg-slate-900 border-t-2 border-blue-600 shadow-md">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1.5 scrollbar-thin scrollbar-thumb-slate-300">
+          <nav 
+            id="admin-primary-navigation"
+            aria-label="Admin Navigation Tabs"
+            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-2.5 scrollbar-thin scrollbar-thumb-slate-700"
+          >
             {navItems.map((item) => {
               const isActive = currentTab === item.id;
               const hasBadge = (item.badgeCount || 0) > 0;
@@ -174,16 +178,21 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   key={item.id}
                   id={`admin-tab-${item.id}`}
                   onClick={() => onSelectTab(item.id)}
-                  className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap cursor-pointer shrink-0 relative ${
+                  className={`group px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 flex items-center gap-2 sm:gap-2.5 whitespace-nowrap cursor-pointer shrink-0 relative ${
                     isActive
-                      ? 'bg-[#0056D2] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/70 bg-white/60 sm:bg-transparent border sm:border-transparent border-slate-200/60'
+                      ? 'bg-[#0056D2] text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-400/60 font-extrabold translate-y-[-1px]'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/90 bg-slate-800/50 border border-slate-700/80 hover:border-slate-600'
                   }`}
                 >
-                  {item.icon}
+                  <span className={`transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-blue-400 group-hover:scale-105'}`}>
+                    {item.icon}
+                  </span>
                   <span>{item.label}</span>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse hidden sm:inline-block ml-0.5" />
+                  )}
                   {hasBadge && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-500 text-white flex items-center gap-0.5 animate-pulse shadow-xs">
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white flex items-center gap-1 animate-pulse shadow-sm">
                       <Zap className="w-2.5 h-2.5 fill-current" />
                       <span>{item.badgeCount}</span>
                     </span>

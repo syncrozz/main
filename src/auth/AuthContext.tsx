@@ -1,15 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AuthUser, AuthState, UserRole, Permission } from './types';
+import { AuthUser, AuthState, Permission } from './types';
 import { 
   hasPermission, 
   saveSession, 
-  getSavedSession, 
   clearSession, 
   logAuditEvent,
   getCustomAdminList,
   saveCustomAdminList,
-  validateAdminPin,
-  createAdminSessionFromPin
+  apiAdminLogin,
+  apiVerifySession,
+  apiAdminLogout,
+  getAdminToken,
+  saveAdminToken,
+  clearAdminToken
 } from './authService';
 
 interface AuthContextType extends AuthState {
@@ -31,17 +34,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize session on mount
+  // Initialize session on mount by checking authoritative server session
   useEffect(() => {
-    const savedUser = getSavedSession();
-    if (savedUser && (savedUser.role === 'MASTER_ADMIN' || savedUser.role === 'ADMIN')) {
-      setUser(savedUser);
-    } else {
-      clearSession();
-      setUser(null);
+    let isMounted = true;
+
+    async function initSession() {
+      const token = getAdminToken();
+      if (token) {
+        try {
+          const verifiedUser = await apiVerifySession(token);
+          if (isMounted) {
+            if (verifiedUser && (verifiedUser.role === 'MASTER_ADMIN' || verifiedUser.role === 'ADMIN')) {
+              const userWithToken = { ...verifiedUser, token };
+              setUser(userWithToken);
+              saveSession(userWithToken);
+            } else {
+              clearAdminToken();
+              clearSession();
+              setUser(null);
+            }
+          }
+        } catch {
+          if (isMounted) {
+            clearAdminToken();
+            clearSession();
+            setUser(null);
+          }
+        }
+      } else {
+        if (isMounted) {
+          clearAdminToken();
+          clearSession();
+          setUser(null);
+        }
+      }
+      if (isMounted) {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
     }
-    setIsLoading(false);
-    setIsInitialized(true);
+
+    initSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const clearAuthError = useCallback(() => {
@@ -49,23 +86,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Validate & Login with 4-Digit Admin Access PIN (5313)
+   * Validate & Login with 4-Digit Admin Access PIN via authoritative server API
    */
   const loginWithPin = useCallback(async (pin: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const isValid = validateAdminPin(pin);
-      if (isValid) {
-        const adminUser = createAdminSessionFromPin();
-        setUser(adminUser);
-        saveSession(adminUser);
-        logAuditEvent('PIN_LOGIN_SUCCESS', 'admin', 'SUCCESS', 'Admin Access PIN 5313 disahkan.');
+      const res = await apiAdminLogin(pin);
+      if (res.success && res.token && res.user) {
+        const userWithToken = { ...res.user, token: res.token };
+        saveAdminToken(res.token);
+        saveSession(userWithToken);
+        setUser(userWithToken);
+        logAuditEvent('PIN_LOGIN_SUCCESS', res.user.email, 'SUCCESS', 'Admin Access PIN disahkan oleh pelayan.');
         return true;
       } else {
-        setError('PIN tidak sah. Sila cuba lagi.');
-        logAuditEvent('PIN_LOGIN_FAILED', 'unknown', 'DENIED', 'Percubaan PIN gagal.');
+        const msg = res.error || 'PIN tidak sah. Sila cuba lagi.';
+        setError(msg);
+        logAuditEvent('PIN_LOGIN_FAILED', 'unknown', 'DENIED', msg);
         return false;
       }
     } catch (err: any) {
@@ -78,12 +117,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Secure Sign Out
+   * Secure Sign Out with Server Revocation
    */
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const token = getAdminToken();
     if (user) {
       logAuditEvent('LOGOUT', user.email, 'INFO', 'Admin signed out');
     }
+    await apiAdminLogout(token || undefined);
+    clearAdminToken();
     clearSession();
     setUser(null);
     setError(null);
@@ -113,6 +155,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = [...list, clean];
       saveCustomAdminList(updated);
       logAuditEvent('ADMIN_ADDED', clean, 'SUCCESS', `Added by ${user.email}`);
+
+      const token = getAdminToken();
+      if (token) {
+        fetch('/api/admin/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ newAdminEmail: clean })
+        }).catch(() => {});
+      }
       return true;
     }
     return false;
@@ -131,6 +185,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = list.filter((e) => e.toLowerCase() !== clean);
     saveCustomAdminList(updated);
     logAuditEvent('ADMIN_REMOVED', clean, 'SUCCESS', `Removed by ${user.email}`);
+
+    const token = getAdminToken();
+    if (token) {
+      fetch(`/api/admin/users/${encodeURIComponent(clean)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).catch(() => {});
+    }
     return true;
   }, [user]);
 

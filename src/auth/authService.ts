@@ -1,32 +1,119 @@
 import { AuthUser, UserRole, Permission, AuditLogEntry } from './types';
-import { ADMIN_PIN, MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
+import { MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
 import { logAuditEventToFirestore } from '../services/firestoreService';
 
 const SESSION_KEY = 'syncrozz_auth_session';
+const ADMIN_TOKEN_KEY = 'syncrozz_admin_token';
 const ADMIN_REGISTRY_KEY = 'syncrozz_admin_registry';
 const AUDIT_LOGS_KEY = 'syncrozz_audit_logs';
 
 /**
- * Validate Admin Access PIN Code
+ * Server-side Admin PIN Authentication
+ * Client sends input PIN to server, server validates and issues an authoritative session token.
  */
-export function validateAdminPin(pin: string): boolean {
-  return pin.trim() === ADMIN_PIN;
+export async function apiAdminLogin(pin: string): Promise<{
+  success: boolean;
+  token?: string;
+  user?: AuthUser;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pin.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        error: data.error || 'PIN keselamatan tidak sah. Sila cuba lagi.'
+      };
+    }
+    return {
+      success: true,
+      token: data.token,
+      user: data.user
+    };
+  } catch (err) {
+    console.error('Network error during PIN validation:', err);
+    return {
+      success: false,
+      error: 'Ralat sambungan pelayan semasa mengesahkan PIN.'
+    };
+  }
 }
 
 /**
- * Create Admin Session from PIN
+ * Authoritative Server Session Verification
  */
-export function createAdminSessionFromPin(): AuthUser {
-  return {
-    id: 'usr_admin_master',
-    email: 'admin@syncrozz.com',
-    name: 'SYNCROZZ Admin',
-    picture: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/MAIN/android-chrome-192x192.png',
-    role: 'MASTER_ADMIN',
-    isEmailVerified: true,
-    provider: 'pin',
-    authTime: Date.now()
-  };
+export async function apiVerifySession(token: string): Promise<AuthUser | null> {
+  if (!token) return null;
+  try {
+    const res = await fetch('/api/admin/session', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Server Session Revocation
+ */
+export async function apiAdminLogout(token?: string): Promise<void> {
+  try {
+    const activeToken = token || getAdminToken();
+    if (activeToken) {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${activeToken}`
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Logout notice:', err);
+  } finally {
+    clearSession();
+  }
+}
+
+export function getAdminToken(): string | null {
+  try {
+    return localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveAdminToken(token: string): void {
+  try {
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  } catch (e) {
+    console.error('Failed to save admin token', e);
+  }
+}
+
+export function clearAdminToken(): void {
+  try {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch (e) {
+    console.error('Failed to clear admin token', e);
+  }
+}
+
+/**
+ * Backward-compatible helper: validate PIN via server
+ */
+export async function validateAdminPin(pin: string): Promise<boolean> {
+  const result = await apiAdminLogin(pin);
+  return result.success;
 }
 
 /**
@@ -111,26 +198,6 @@ export function canAccessAdmin(user: AuthUser | null): boolean {
 export function isMasterAdmin(user: AuthUser | null): boolean {
   if (!user) return false;
   return user.role === 'MASTER_ADMIN';
-}
-
-/**
- * Parse Google ID Token (JWT) on client safely
- */
-export function decodeGoogleJwt(token: string): any {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    console.error('Failed to decode Google JWT', e);
-    return null;
-  }
 }
 
 /**

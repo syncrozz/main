@@ -22,36 +22,15 @@ function getAuthHeaders(userEmail?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  let token = typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_token') : null;
-  let email = userEmail || (typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_email') : null);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_token') : null;
+  const email = userEmail || (typeof window !== 'undefined' ? localStorage.getItem('syncrozz_admin_email') : null);
 
-  // If token is missing, check if syncrozz_auth_session exists
-  if (!token && typeof window !== 'undefined') {
-    try {
-      const sessionRaw = localStorage.getItem('syncrozz_auth_session');
-      if (sessionRaw) {
-        const session = JSON.parse(sessionRaw);
-        if (session && (session.role === 'MASTER_ADMIN' || session.role === 'ADMIN')) {
-          token = 'pin_session_5313_master';
-          if (!email && session.email) {
-            email = session.email;
-          }
-        }
-      }
-    } catch {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
-
-  // Fallback to admin identity for active sessions
-  if (!token) {
-    token = 'pin_session_5313_master';
+  if (email) {
+    headers['x-user-email'] = email;
   }
-  if (!email) {
-    email = 'admin@syncrozz.com';
-  }
-
-  headers['Authorization'] = `Bearer ${token}`;
-  headers['x-user-email'] = email;
-  headers['x-admin-pin'] = '5313';
   return headers;
 }
 
@@ -186,9 +165,10 @@ export async function fetchCustomUrlsApi(): Promise<Record<string, string> | nul
   }
 }
 
-export async function saveCustomUrlApi(platformId: string, url: string, userEmail?: string): Promise<boolean> {
+export async function saveCustomUrlApi(platformId: string, url: string, token?: string, userEmail?: string): Promise<boolean> {
   try {
     const headers = getAuthHeaders(userEmail);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch('/api/custom-urls', {
       method: 'POST',
       headers,
@@ -201,9 +181,10 @@ export async function saveCustomUrlApi(platformId: string, url: string, userEmai
   }
 }
 
-export async function removeCustomUrlApi(platformId: string, userEmail?: string): Promise<boolean> {
+export async function removeCustomUrlApi(platformId: string, token?: string, userEmail?: string): Promise<boolean> {
   try {
     const headers = getAuthHeaders(userEmail);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`/api/custom-urls/${encodeURIComponent(platformId)}`, {
       method: 'DELETE',
       headers
@@ -231,9 +212,10 @@ export async function fetchCarouselSlidesApi(): Promise<CarouselSlide[] | null> 
   }
 }
 
-export async function saveCarouselSlidesApi(slides: CarouselSlide[], userEmail?: string): Promise<boolean> {
+export async function saveCarouselSlidesApi(slides: CarouselSlide[], token?: string, userEmail?: string): Promise<boolean> {
   try {
     const headers = getAuthHeaders(userEmail);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch('/api/carousel-slides', {
       method: 'POST',
       headers,
@@ -250,9 +232,10 @@ export async function saveCarouselSlidesApi(slides: CarouselSlide[], userEmail?:
 // DELETED DEFAULT PLATFORMS APIS
 // ----------------------------------------------------
 
-export async function saveDeletedPlatformsApi(deletedIds: string[], userEmail?: string): Promise<boolean> {
+export async function saveDeletedPlatformsApi(deletedIds: string[], token?: string, userEmail?: string): Promise<boolean> {
   try {
     const headers = getAuthHeaders(userEmail);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch('/api/deleted-platforms', {
       method: 'POST',
       headers,
@@ -294,6 +277,22 @@ export async function saveOgImageApi(platformId: string, imageUrl: string, token
     return res.ok;
   } catch (error) {
     console.warn('API saveOgImage notice:', error);
+    return false;
+  }
+}
+
+export async function deleteOgImageApi(platformId: string, token?: string, email?: string): Promise<boolean> {
+  try {
+    const headers = getAuthHeaders(email);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/og-images/${encodeURIComponent(platformId)}`, {
+      method: 'DELETE',
+      headers
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('API deleteOgImage notice:', error);
     return false;
   }
 }

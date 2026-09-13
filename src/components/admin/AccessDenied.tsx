@@ -83,7 +83,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
         {/* Actions */}
         <div className="space-y-3">
           <button
-            id="try-another-google-account-btn"
+            id="try-pin-login-btn"
             onClick={handleSwitchAccount}
             className="w-full py-3 px-4 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >

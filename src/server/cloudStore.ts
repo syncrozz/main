@@ -81,6 +81,19 @@ export function getFullCloudState(): CloudStoreData {
   return { ...memoryStore };
 }
 
+export function getPublicCloudState(): Omit<CloudStoreData, 'inquiries' | 'secondaryAdmins'> {
+  loadCloudStore();
+  return {
+    version: memoryStore.version,
+    lastUpdated: memoryStore.lastUpdated,
+    platforms: memoryStore.platforms,
+    customUrls: memoryStore.customUrls,
+    carouselSlides: memoryStore.carouselSlides,
+    deletedDefaultIds: memoryStore.deletedDefaultIds,
+    ogImages: memoryStore.ogImages
+  };
+}
+
 export function getStorePlatforms(): PlatformItem[] {
   loadCloudStore();
   return memoryStore.platforms;

@@ -45,80 +45,162 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none" />
-        
-        <div className="relative z-10 max-w-3xl space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span>Sesi Disahkan Google OAuth 2.0</span>
-            </span>
+      {/* Welcome Banner - High Prominence Harmonious Admin Deck */}
+      <div 
+        id="admin-overview-welcome-banner"
+        className="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 rounded-2xl p-4 sm:p-6 text-white shadow-lg border border-slate-800/80 relative overflow-hidden"
+      >
+        {/* Subtle Ambient Accent Glow */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-            {isMasterAdmin && (
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-black flex items-center gap-1.5 shadow-xs">
-                <Crown className="w-3.5 h-3.5 fill-current" />
-                <span>MASTER_ADMIN AUTHORIZED</span>
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center">
+          
+          {/* Left Column: Greeting, Role & Context */}
+          <div className="lg:col-span-7 xl:col-span-7 space-y-3 min-w-0">
+            {/* Status Badges Row */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-300 text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-xs shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="whitespace-nowrap">Admin Access (PIN)</span>
               </span>
-            )}
 
-            {unreadCount > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center gap-1.5 shadow-xs animate-bounce">
-                <Zap className="w-3 h-3 fill-current" />
-                <span>{unreadCount} Inquiries Baharu</span>
-              </span>
-            )}
+              {isMasterAdmin && (
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[11px] font-black flex items-center gap-1.5 shadow-xs shrink-0">
+                  <Crown className="w-3.5 h-3.5 fill-current shrink-0" />
+                  <span className="whitespace-nowrap">MASTER ADMIN</span>
+                </span>
+              )}
+
+              {unreadCount > 0 ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center gap-1.5 shadow-xs animate-pulse shrink-0">
+                  <Zap className="w-3 h-3 fill-current shrink-0" />
+                  <span className="whitespace-nowrap">{unreadCount} Inquiries Baharu</span>
+                </span>
+              ) : (
+                <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-semibold items-center gap-1.5 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="whitespace-nowrap">Sistem Segerak Awan Aktif</span>
+                </span>
+              )}
+            </div>
+
+            {/* Main Greeting */}
+            <div>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>Welcome, Admin</span>
+                <span className="text-blue-400 inline-block">⚡</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mt-1 break-words">
+                Sesi aktif sebagai <span className="inline-block bg-white/10 px-2 py-0.5 rounded-md text-white font-mono text-xs border border-white/15 break-all sm:break-normal font-semibold">{user?.email}</span>.
+                <span className="hidden sm:inline text-slate-400 ml-1">
+                  {isMasterAdmin 
+                    ? 'Kawalan penuh penyelarasan katalog dan pengurusan platform.' 
+                    : 'Hak akses pentadbiran visual dan konfigurasi platform.'}
+                </span>
+              </p>
+            </div>
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-            Welcome, Admin
-          </h1>
+          {/* Right Column: Quick Command Actions (2x2 Balanced Grid) */}
+          <div className="lg:col-span-5 xl:col-span-5 w-full">
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+              
+              {/* Button 1: Inquiries */}
+              <button
+                id="overview-quick-inquiries-btn"
+                onClick={() => onNavigateTab('inquiries')}
+                className="group relative p-2.5 sm:p-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 hover:border-amber-400 transition-all duration-150 flex flex-col justify-between text-left cursor-pointer active:scale-98"
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-amber-300 group-hover:text-amber-200 leading-tight">
+                    Peti Inquiries
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {inquiries.length} mesej masuk
+                  </div>
+                </div>
+              </button>
 
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Anda log masuk sebagai <strong className="text-white font-mono">{user?.email}</strong>. 
-            {isMasterAdmin 
-              ? ' Memegang kebenaran Master Admin tertinggi bagi keseluruhan ekosistem SYNCROZZ.' 
-              : ' Mempunyai hak akses pentadbir untuk mengurus visual dan kandungan platform.'}
-          </p>
+              {/* Button 2: Urus Platform */}
+              <button
+                id="overview-quick-og-btn"
+                onClick={() => onNavigateTab('platforms')}
+                className="group relative p-2.5 sm:p-3 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-400/40 hover:border-blue-400 transition-all duration-150 flex flex-col justify-between text-left cursor-pointer active:scale-98"
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#0056D2] text-white flex items-center justify-center shadow-xs">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-blue-300 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-blue-200 group-hover:text-white leading-tight">
+                    Urus Platform
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {totalPlatforms} modul aktif
+                  </div>
+                </div>
+              </button>
 
-          <div className="pt-1 flex flex-wrap gap-2.5">
-            <button
-              id="overview-quick-inquiries-btn"
-              onClick={() => onNavigateTab('inquiries')}
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Peti Masuk Inquiries ({inquiries.length})</span>
-            </button>
+              {/* Button 3: Data Tools & Backup */}
+              <button
+                id="overview-quick-datatools-btn"
+                onClick={() => onNavigateTab('datatools')}
+                className="group relative p-2.5 sm:p-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 hover:border-emerald-400 transition-all duration-150 flex flex-col justify-between text-left cursor-pointer active:scale-98"
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-emerald-300 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-emerald-200 group-hover:text-white leading-tight">
+                    Data & Sandaran
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Eksport & Pulih
+                  </div>
+                </div>
+              </button>
 
-            <button
-              id="overview-quick-og-btn"
-              onClick={() => onNavigateTab('platforms')}
-              className="px-3 py-1.5 rounded-lg bg-[#0056D2] hover:bg-blue-600 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>Urus Platform & Open Graph</span>
-            </button>
+              {/* Button 4: Pengurusan Peranan */}
+              <button
+                id="overview-quick-users-btn"
+                onClick={() => onNavigateTab('users')}
+                className="group relative p-2.5 sm:p-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/40 hover:border-indigo-400 transition-all duration-150 flex flex-col justify-between text-left cursor-pointer active:scale-98"
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-indigo-300 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-indigo-200 group-hover:text-white leading-tight">
+                    Peranan Admin
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Pengesahan PIN
+                  </div>
+                </div>
+              </button>
 
-            <button
-              id="overview-quick-datatools-btn"
-              onClick={() => onNavigateTab('datatools')}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>Data Tools & Sandaran</span>
-            </button>
-
-            <button
-              id="overview-quick-users-btn"
-              onClick={() => onNavigateTab('users')}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-xs"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Pengurusan Peranan</span>
-            </button>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -328,7 +410,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                     Pengesahan Identiti Master Admin
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Kebenaran tertinggi disahkan secara terus daripada Google OAuth 2.0
+                    Kebenaran tertinggi disahkan melalui 4-Digit Security PIN Pentadbir
                   </p>
                 </div>
               </div>

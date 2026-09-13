@@ -1,13 +1,6 @@
 import { UserRole, Permission, RolePermissions } from './types';
 
 /**
- * ADMIN ACCESS PIN CODE
- * Secret 4-digit PIN for Admin Mode Access.
- * (Not displayed in UI)
- */
-export const ADMIN_PIN = '5313';
-
-/**
  * MASTER ADMIN CONFIGURATION
  * Default Administrator Identity for SYNCROZZ.
  */
