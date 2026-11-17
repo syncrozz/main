@@ -1,39 +1,36 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { TrustStrip } from './components/TrustStrip';
+import { HeroCarousel } from './components/HeroCarousel';
 import { PlatformSection } from './components/PlatformSection';
-import { CategoriesSection } from './components/CategoriesSection';
-import { WhySyncrozz } from './components/WhySyncrozz';
-import { EcosystemFlow } from './components/EcosystemFlow';
-import { CostCalculator } from './components/CostCalculator';
-import { CtaSection } from './components/CtaSection';
+import { WhatsAppContactSection } from './components/WhatsAppContactSection';
 import { Footer } from './components/Footer';
-import { PlatformModal } from './components/PlatformModal';
-import { ContactModal } from './components/ContactModal';
-import { VideoDemoModal } from './components/VideoDemoModal';
-import { AdminOgModal } from './components/AdminOgModal';
-import { AdminPinModal } from './components/AdminPinModal';
+import { LegalModal, LegalDocType } from './components/LegalModal';
 import { SupportModal } from './components/SupportModal';
 import { AdminLayout } from './components/admin/AdminLayout';
-import { PlatformFormModal } from './components/admin/PlatformFormModal';
-import { PlatformItem } from './types';
+import { PlatformItem, PlatformCategory } from './types';
 import { CarouselSlide, getLocalCarouselSlides, saveLocalCarouselSlides } from './utils/carouselStorage';
 import { compressDataUrl } from './utils/imageCompressor';
-import { getCustomOgImages, saveCustomOgImage, removeCustomOgImage, getCustomPlatformUrls, saveCustomPlatformUrl, removeCustomPlatformUrl } from './utils/ogStorage';
-import { 
-  getAllPlatforms, 
-  savePlatform, 
+import {
+  getCustomOgImages,
+  saveCustomOgImage,
+  removeCustomOgImage,
+  getCustomPlatformUrls,
+  saveCustomPlatformUrl,
+  removeCustomPlatformUrl,
+} from './utils/ogStorage';
+import {
+  getAllPlatforms,
+  savePlatform,
   deletePlatform,
   saveLocalCustomPlatforms,
   saveDeletedDefaultPlatformIds,
   getLocalCustomPlatforms,
-  getDeletedDefaultPlatformIds
+  getDeletedDefaultPlatformIds,
 } from './utils/platformStorage';
-import { 
-  saveOgImageToFirestore, 
-  removeOgImageFromFirestore, 
+import {
+  saveOgImageToFirestore,
+  removeOgImageFromFirestore,
   subscribeToOgImages,
   savePlatformToFirestore,
   deletePlatformFromFirestore,
@@ -44,8 +41,10 @@ import {
   subscribeToDeletedDefaultPlatforms,
   saveCarouselSlidesToFirestore,
   subscribeToCarouselSlides,
-  logAuditEventToFirestore
+  logAuditEventToFirestore,
+  testConnection,
 } from './services/firestoreService';
+import { initFirebaseAnalytics } from './lib/firebase';
 import { safeLocalStorageSet } from './utils/safeStorage';
 import {
   fetchFullCloudStateApi,
@@ -59,22 +58,17 @@ import {
   saveCarouselSlidesApi,
   saveDeletedPlatformsApi,
   saveOgImageApi,
-  syncUserToDatabase
+  removeOgImageApi,
+  syncUserToDatabase,
 } from './services/apiService';
 
 function MainAppContent() {
-  const { user, isAuthenticated, isAdmin, isMasterAdmin, isInitialized, isLoading } = useAuth();
+  const { user, isAuthenticated, isInitialized, isLoading } = useAuth();
   const [isAdminView, setIsAdminView] = useState(false);
   const [platforms, setPlatforms] = useState<PlatformItem[]>(() => getAllPlatforms());
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<any>('All');
-  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<PlatformCategory>('All');
+  const [legalDoc, setLegalDoc] = useState<LegalDocType>(null);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
-  const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false);
   const [customOgImages, setCustomOgImages] = useState<Record<string, string>>({});
   const [customUrls, setCustomUrls] = useState<Record<string, string>>(() => getCustomPlatformUrls());
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>(() => getLocalCarouselSlides());
@@ -116,7 +110,6 @@ function MainAppContent() {
 
   // Load persistent cloud state and subscribe to all sync channels
   useEffect(() => {
-    // 1. Initial fast load from localStorage for zero perceived latency
     const localOg = getCustomOgImages();
     setCustomOgImages(localOg);
 
@@ -132,43 +125,45 @@ function MainAppContent() {
     latestDeletedIdsRef.current = localDeleted;
     setPlatforms(getAllPlatforms(localPlatforms, localDeleted));
 
-    // 2. Immediate Full Cloud State Sync (Solves Incognito and Cross-Device synchronization)
-    fetchFullCloudStateApi().then((cloudState) => {
-      if (cloudState) {
-        lastSeenSyncTimeRef.current = cloudState.lastUpdated || Date.now();
+    // Validate Firestore connectivity & initialize optional Analytics safely
+    testConnection().catch(() => {});
+    initFirebaseAnalytics().catch(() => {});
 
-        // If cloud store has platforms, apply them
-        if (Array.isArray(cloudState.platforms)) {
-          latestCustomPlatformsRef.current = cloudState.platforms;
-          saveLocalCustomPlatforms(cloudState.platforms);
-          const deleted = cloudState.deletedDefaultIds || [];
-          latestDeletedIdsRef.current = deleted;
-          setPlatforms(getAllPlatforms(cloudState.platforms, deleted));
+    // Immediate Full Cloud State Sync
+    fetchFullCloudStateApi()
+      .then((cloudState) => {
+        if (cloudState) {
+          lastSeenSyncTimeRef.current = cloudState.lastUpdated || Date.now();
+
+          if (Array.isArray(cloudState.platforms)) {
+            latestCustomPlatformsRef.current = cloudState.platforms;
+            saveLocalCustomPlatforms(cloudState.platforms);
+            const deleted = cloudState.deletedDefaultIds || [];
+            latestDeletedIdsRef.current = deleted;
+            setPlatforms(getAllPlatforms(cloudState.platforms, deleted));
+          }
+
+          if (cloudState.customUrls) {
+            setCustomUrls(cloudState.customUrls);
+            safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(cloudState.customUrls));
+          }
+
+          if (Array.isArray(cloudState.carouselSlides)) {
+            setCarouselSlides(cloudState.carouselSlides);
+            saveLocalCarouselSlides(cloudState.carouselSlides);
+          }
+
+          if (cloudState.ogImages) {
+            setCustomOgImages((prev) => ({ ...prev, ...cloudState.ogImages }));
+            safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(cloudState.ogImages));
+          }
         }
+      })
+      .catch((err) => {
+        console.warn('Initial cloud sync notice:', err);
+      });
 
-        // Custom URLs
-        if (cloudState.customUrls) {
-          setCustomUrls(cloudState.customUrls);
-          safeLocalStorageSet('syncrozz_custom_platform_urls_v1', JSON.stringify(cloudState.customUrls));
-        }
-
-        // Carousel Slides
-        if (Array.isArray(cloudState.carouselSlides)) {
-          setCarouselSlides(cloudState.carouselSlides);
-          saveLocalCarouselSlides(cloudState.carouselSlides);
-        }
-
-        // OG Images
-        if (cloudState.ogImages) {
-          setCustomOgImages((prev) => ({ ...prev, ...cloudState.ogImages }));
-          safeLocalStorageSet('syncrozz_custom_og_images_v1', JSON.stringify(cloudState.ogImages));
-        }
-      }
-    }).catch((err) => {
-      console.warn('Initial cloud sync notice:', err);
-    });
-
-    // 3. Firestore Subscriptions (active in parallel for real-time Firebase syncing)
+    // Firestore Subscriptions
     const unsubscribeOg = subscribeToOgImages((firestoreImages) => {
       if (firestoreImages) {
         setCustomOgImages((prev) => ({ ...prev, ...firestoreImages }));
@@ -214,8 +209,7 @@ function MainAppContent() {
       }
     });
 
-    // 4. Background polling & window focus revalidation
-    // Ensures incognito tabs and separate devices update dynamically when another tab saves changes
+    // Background polling & window focus revalidation
     const pollInterval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       try {
@@ -288,7 +282,7 @@ function MainAppContent() {
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleVisibility);
 
-    // 5. Same-browser cross-tab storage event synchronization
+    // Same-browser cross-tab storage event synchronization
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'syncrozz_custom_platforms_v1') {
         const local = getLocalCustomPlatforms();
@@ -318,23 +312,18 @@ function MainAppContent() {
 
   // Sync authenticated user to Database
   useEffect(() => {
-    if (isAuthenticated && user) {
-      syncUserToDatabase({
-        uid: user.id || user.email,
-        email: user.email,
-        displayName: user.name,
-        photoUrl: user.picture
-      }).catch(() => {});
+    if (isAuthenticated && user?.token) {
+      syncUserToDatabase(user.token).catch(() => {});
     }
-  }, [isAuthenticated, user?.id, user?.email]);
+  }, [isAuthenticated, user?.id, user?.token]);
 
-  // Section Observer for smooth nav highlight
+  // Section Observer for active nav underline
   useEffect(() => {
     if (isAdminView) return;
 
-    const sections = ['home', 'platform', 'ecosystem', 'solutions', 'why', 'kos'];
+    const sections = ['home', 'platforms', 'about', 'contact'];
     const handleScroll = () => {
-      const scrollPosition = window.scrollY + 200;
+      const scrollPosition = window.scrollY + 180;
 
       for (const section of sections) {
         const element = document.getElementById(section);
@@ -349,29 +338,19 @@ function MainAppContent() {
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isAdminView]);
 
-  /**
-   * Navigate to Admin view with strict initialization
-   */
   const navigateToAdmin = useCallback(() => {
     window.location.hash = '#admin';
     setIsAdminView(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  /**
-   * Open PIN modal if not authenticated, or navigate to Admin view if already logged in
-   */
   const handleAdminAccess = useCallback(() => {
-    if (isAuthenticated && (isAdmin || isMasterAdmin)) {
-      navigateToAdmin();
-    } else {
-      setIsAdminPinModalOpen(true);
-    }
-  }, [isAuthenticated, isAdmin, isMasterAdmin, navigateToAdmin]);
+    navigateToAdmin();
+  }, [navigateToAdmin]);
 
   const navigateToSite = useCallback(() => {
     window.location.hash = '#home';
@@ -396,13 +375,6 @@ function MainAppContent() {
     }
   };
 
-  const handleSelectPlatformById = (id: string) => {
-    const found = platforms.find((p) => p.id === id);
-    if (found) {
-      setSelectedPlatform(found);
-    }
-  };
-
   const handleSaveOgImage = async (platformId: string, dataUrl: string) => {
     let finalUrl = dataUrl;
     if (dataUrl.startsWith('data:image/') && dataUrl.length > 80000) {
@@ -414,12 +386,10 @@ function MainAppContent() {
     saveCustomOgImage(platformId, finalUrl);
     setCustomOgImages((prev) => {
       const updated = { ...prev, [platformId]: finalUrl };
-      pushClientStateApi({
-        ogImages: updated
-      }, user?.token, user?.email || undefined).catch(() => {});
+      pushClientStateApi({ ogImages: updated }, user?.token).catch(() => {});
       return updated;
     });
-    saveOgImageApi(platformId, finalUrl, user?.token, user?.email || undefined).catch(() => {});
+    saveOgImageApi(platformId, finalUrl, user?.token).catch(() => {});
     saveOgImageToFirestore(platformId, finalUrl, user?.email || undefined).catch(() => {});
   };
 
@@ -428,19 +398,10 @@ function MainAppContent() {
     setCustomOgImages((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
-      pushClientStateApi({
-        ogImages: copy
-      }, user?.token, user?.email || undefined).catch(() => {});
+      pushClientStateApi({ ogImages: copy }, user?.token).catch(() => {});
       return copy;
     });
-    fetch(`/api/og-images/${encodeURIComponent(platformId)}`, {
-      method: 'DELETE',
-      headers: {
-        'x-admin-pin': '5313',
-        'Authorization': 'Bearer pin_session_5313_master',
-        'x-user-email': user?.email || 'admin@syncrozz.com'
-      }
-    }).catch(() => {});
+    removeOgImageApi(platformId, user?.token).catch(() => {});
     removeOgImageFromFirestore(platformId).catch(() => {});
   };
 
@@ -448,12 +409,10 @@ function MainAppContent() {
     saveCustomPlatformUrl(platformId, url);
     setCustomUrls((prev) => {
       const updated = { ...prev, [platformId]: url };
-      pushClientStateApi({
-        customUrls: updated
-      }, user?.token, user?.email || undefined).catch(() => {});
+      pushClientStateApi({ customUrls: updated }, user?.token).catch(() => {});
       return updated;
     });
-    saveCustomUrlApi(platformId, url, user?.email || undefined).catch(() => {});
+    saveCustomUrlApi(platformId, url, user?.token).catch(() => {});
     saveCustomPlatformUrlToFirestore(platformId, url, user?.email || undefined).catch(() => {});
   };
 
@@ -462,12 +421,10 @@ function MainAppContent() {
     setCustomUrls((prev) => {
       const copy = { ...prev };
       delete copy[platformId];
-      pushClientStateApi({
-        customUrls: copy
-      }, user?.token, user?.email || undefined).catch(() => {});
+      pushClientStateApi({ customUrls: copy }, user?.token).catch(() => {});
       return copy;
     });
-    removeCustomUrlApi(platformId, user?.email || undefined).catch(() => {});
+    removeCustomUrlApi(platformId, user?.token).catch(() => {});
     removeCustomPlatformUrlFromFirestore(platformId).catch(() => {});
   };
 
@@ -477,14 +434,22 @@ function MainAppContent() {
     const customPlatforms = getLocalCustomPlatforms();
     latestCustomPlatformsRef.current = customPlatforms;
 
-    savePlatformApi(platform, user?.token, user?.email || undefined).catch(() => {});
-    pushClientStateApi({
-      platforms: customPlatforms,
-      deletedDefaultIds: latestDeletedIdsRef.current
-    }, user?.token, user?.email || undefined).catch(() => {});
+    savePlatformApi(platform, user?.token).catch(() => {});
+    pushClientStateApi(
+      {
+        platforms: customPlatforms,
+        deletedDefaultIds: latestDeletedIdsRef.current,
+      },
+      user?.token
+    ).catch(() => {});
 
     savePlatformToFirestore(platform, user?.email || undefined).catch(() => {});
-    logAuditEventToFirestore('SAVE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform ${platform.name} (#${platform.id}) saved.`).catch(() => {});
+    logAuditEventToFirestore(
+      'SAVE_PLATFORM',
+      user?.email || 'admin',
+      'SUCCESS',
+      `Platform ${platform.name} (#${platform.id}) saved.`
+    ).catch(() => {});
 
     if (ogImageDataUrl) {
       handleSaveOgImage(platform.id, ogImageDataUrl);
@@ -504,7 +469,7 @@ function MainAppContent() {
         ...p,
         createdAt: p.createdAt || existing?.createdAt || now,
         updatedAt: now + idx,
-        isCustom: p.isCustom ?? existing?.isCustom ?? true
+        isCustom: p.isCustom ?? existing?.isCustom ?? true,
       });
     });
 
@@ -513,16 +478,24 @@ function MainAppContent() {
     latestCustomPlatformsRef.current = updatedCustom;
     setPlatforms(getAllPlatforms(updatedCustom, deletedIds));
 
-    saveMultiplePlatformsApi(newPlatforms, user?.token, user?.email || undefined).catch(() => {});
-    pushClientStateApi({
-      platforms: updatedCustom,
-      deletedDefaultIds: deletedIds
-    }, user?.token, user?.email || undefined).catch(() => {});
+    saveMultiplePlatformsApi(newPlatforms, user?.token).catch(() => {});
+    pushClientStateApi(
+      {
+        platforms: updatedCustom,
+        deletedDefaultIds: deletedIds,
+      },
+      user?.token
+    ).catch(() => {});
 
     newPlatforms.forEach((p) => {
       savePlatformToFirestore(p, user?.email || undefined).catch(() => {});
     });
-    logAuditEventToFirestore('BATCH_SAVE_PLATFORMS', user?.email || 'admin', 'SUCCESS', `Batch saved ${newPlatforms.length} platforms.`).catch(() => {});
+    logAuditEventToFirestore(
+      'BATCH_SAVE_PLATFORMS',
+      user?.email || 'admin',
+      'SUCCESS',
+      `Batch saved ${newPlatforms.length} platforms.`
+    ).catch(() => {});
   };
 
   const handleDeletePlatform = (platformId: string) => {
@@ -533,29 +506,43 @@ function MainAppContent() {
     latestCustomPlatformsRef.current = updatedCustom;
     latestDeletedIdsRef.current = updatedDeletedIds;
 
-    pushClientStateApi({
-      platforms: updatedCustom,
-      deletedDefaultIds: updatedDeletedIds
-    }, user?.token, user?.email || undefined).catch(() => {});
+    pushClientStateApi(
+      {
+        platforms: updatedCustom,
+        deletedDefaultIds: updatedDeletedIds,
+      },
+      user?.token
+    ).catch(() => {});
 
-    saveDeletedPlatformsApi(updatedDeletedIds, user?.email || undefined).catch(() => {});
-    deletePlatformApi(platformId, user?.token, user?.email || undefined).catch(() => {});
+    saveDeletedPlatformsApi(updatedDeletedIds, user?.token).catch(() => {});
+    deletePlatformApi(platformId, user?.token).catch(() => {});
     deletePlatformFromFirestore(platformId).catch(() => {});
-    logAuditEventToFirestore('DELETE_PLATFORM', user?.email || 'admin', 'SUCCESS', `Platform #${platformId} removed.`).catch(() => {});
+    logAuditEventToFirestore(
+      'DELETE_PLATFORM',
+      user?.email || 'admin',
+      'SUCCESS',
+      `Platform #${platformId} removed.`
+    ).catch(() => {});
   };
 
   const handleSaveCarouselSlides = (updatedSlides: CarouselSlide[]) => {
     setCarouselSlides(updatedSlides);
     saveLocalCarouselSlides(updatedSlides);
-    saveCarouselSlidesApi(updatedSlides, user?.email || undefined).catch(() => {});
-    pushClientStateApi({
-      carouselSlides: updatedSlides
-    }, user?.token, user?.email || undefined).catch(() => {});
+    saveCarouselSlidesApi(updatedSlides, user?.token).catch(() => {});
+    pushClientStateApi(
+      { carouselSlides: updatedSlides },
+      user?.token
+    ).catch(() => {});
     saveCarouselSlidesToFirestore(updatedSlides, user?.email || undefined).catch(() => {});
-    logAuditEventToFirestore('UPDATE_CAROUSEL', user?.email || 'admin', 'SUCCESS', `Hero Carousel updated (${updatedSlides.length} slides).`).catch(() => {});
+    logAuditEventToFirestore(
+      'UPDATE_CAROUSEL',
+      user?.email || 'admin',
+      'SUCCESS',
+      `Hero Carousel updated (${updatedSlides.length} slides).`
+    ).catch(() => {});
   };
 
-  // IF ADMIN VIEW: Render Protected Admin Route
+  // Protected Admin Route
   if (isAdminView) {
     return (
       <AdminLayout
@@ -576,108 +563,56 @@ function MainAppContent() {
     );
   }
 
-  // PUBLIC WEBSITE VIEW
+  // Minimal Premium Platform Showcase Public Homepage
   return (
-    <div className="min-h-screen bg-[#fcfdfe] text-slate-900 font-sans flex flex-col selection:bg-blue-600 selection:text-white">
-      
-      {/* Top Fixed Sticky Navigation */}
+    <div className="min-h-screen bg-white text-slate-900 font-sans flex flex-col selection:bg-[#0056D2] selection:text-white">
+      {/* Section 1: Minimal Navigation */}
       <Navbar
-        onExploreClick={() => scrollToSection('platform')}
-        onContactClick={() => setIsContactOpen(true)}
+        onExploreClick={() => scrollToSection('platforms')}
+        onContactClick={() => scrollToSection('contact')}
         onLogoClick={() => scrollToSection('home')}
         activeSection={activeSection}
-        isAdminMode={isAdminMode}
-        onOpenAdminModal={() => setIsAdminModalOpen(true)}
-        onAdminClick={handleAdminAccess}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="flex-grow">
-        {/* 1. Hero Section with Dynamic Auto-Swap Carousel */}
-        <Hero
-          onExploreClick={() => scrollToSection('platform')}
-          onVideoDemoClick={() => setIsVideoDemoOpen(true)}
-          carouselSlides={carouselSlides}
-        />
+        {/* Section 2: Hero Carousel (Immediately after Navigation) */}
+        <section
+          id="home"
+          className="pt-20 pb-8 sm:pt-24 sm:pb-12 bg-slate-50/50 border-b border-slate-100"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <HeroCarousel
+              slides={carouselSlides}
+              onExplorePlatforms={() => scrollToSection('platforms')}
+            />
+          </div>
+        </section>
 
-        {/* 2. Trust / Value Strip */}
-        <TrustStrip />
-
-        {/* 3. Platform Section ("Satu Platform, Banyak Penyelesaian") */}
+        {/* Section 3: Available Platforms Directory (Grid Card) */}
         <PlatformSection
           platforms={platforms}
-          onSelectPlatform={(platform) => setSelectedPlatform(platform)}
           customOgImages={customOgImages}
           customUrls={customUrls}
-          onSaveOgImage={handleSaveOgImage}
-          onRemoveOgImage={handleRemoveOgImage}
-          isAdminMode={isAdminMode}
-          onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
-          onOpenAdminModal={() => setIsAdminModalOpen(true)}
-          onAdminClick={handleAdminAccess}
-          onAddPlatformClick={() => setIsAddPlatformModalOpen(true)}
           selectedCategory={selectedCategoryFilter}
           onSelectCategoryFilter={setSelectedCategoryFilter}
         />
 
-        {/* 4. Ecosystem Visual ("Flow") */}
-        <EcosystemFlow />
-
-        {/* 5. Categories Section ("Solutions") */}
-        <CategoriesSection
-          platforms={platforms}
-          onSelectCategory={(category) => {
-            setSelectedCategoryFilter(category as any);
-            scrollToSection('platform');
-          }}
-        />
-
-        {/* 6. Why SYNCROZZ ("Teknologi Yang Dibina Untuk Memudahkan") */}
-        <WhySyncrozz />
-
-        {/* 7. Value & Cost Estimator ("Kos") */}
-        <CostCalculator
-          onContactClick={() => setIsContactOpen(true)}
-        />
-
-        {/* 8. Call To Action Section */}
-        <CtaSection
-          onExploreClick={() => scrollToSection('platform')}
-          onContactClick={() => setIsContactOpen(true)}
-        />
+        {/* Section 4: Concise About & Direct WhatsApp Contact */}
+        <WhatsAppContactSection />
       </main>
 
-      {/* Footer */}
+      {/* Section 5: Minimal Footer */}
       <Footer
-        onPlatformClick={handleSelectPlatformById}
-        onContactClick={() => setIsContactOpen(true)}
+        onOpenLegal={(doc) => setLegalDoc(doc)}
+        onContactClick={() => scrollToSection('contact')}
         onAdminClick={handleAdminAccess}
-        onSupportClick={() => setIsSupportOpen(true)}
       />
 
-      {/* Modals */}
-      <PlatformModal
-        platform={selectedPlatform}
-        onClose={() => setSelectedPlatform(null)}
-        onContactClick={() => setIsContactOpen(true)}
-        customOgImages={customOgImages}
-        onSaveOgImage={handleSaveOgImage}
-        isAdminMode={isAdminMode}
-      />
+      {/* Legal Policy Modal (Privacy Policy & Terms of Use) */}
+      <LegalModal docType={legalDoc} onClose={() => setLegalDoc(null)} />
 
-      {/* Quick Add Platform Modal for Admins */}
-      <PlatformFormModal
-        isOpen={isAddPlatformModalOpen}
-        onClose={() => setIsAddPlatformModalOpen(false)}
-        onSave={handleSavePlatform}
-        existingIds={platforms.map(p => p.id)}
-      />
-
-      <ContactModal
-        isOpen={isContactOpen}
-        onClose={() => setIsContactOpen(false)}
-      />
-
+      {/* Support Modal (Preserved for #support route) */}
       <SupportModal
         isOpen={isSupportOpen}
         onClose={() => {
@@ -687,32 +622,6 @@ function MainAppContent() {
           }
         }}
       />
-
-      <VideoDemoModal
-        isOpen={isVideoDemoOpen}
-        onClose={() => setIsVideoDemoOpen(false)}
-        onExploreClick={() => scrollToSection('platform')}
-      />
-
-      {/* Admin PIN Access Modal (Keyboard-first, auto-focus, auto-submit) */}
-      <AdminPinModal
-        isOpen={isAdminPinModalOpen}
-        onClose={() => setIsAdminPinModalOpen(false)}
-        onSuccess={navigateToAdmin}
-      />
-
-      {/* Admin Mode Modal for Open Graph Image Uploads */}
-      <AdminOgModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        platforms={platforms}
-        customOgImages={customOgImages}
-        onSaveOgImage={handleSaveOgImage}
-        onRemoveOgImage={handleRemoveOgImage}
-        isAdminMode={isAdminMode}
-        onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
-      />
-
     </div>
   );
 }

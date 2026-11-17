@@ -35,8 +35,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 }) => {
   const { user, isMasterAdmin, logout } = useAuth();
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     onExitToWebsite();
   };
 
@@ -58,7 +58,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     },
     { id: 'datatools', label: 'Data & Sandaran', icon: <Database className="w-4 h-4" /> },
     { id: 'users', label: 'Pengguna & Peranan', icon: <Users className="w-4 h-4" /> },
-    { id: 'settings', label: 'PIN & Keselamatan', icon: <Settings className="w-4 h-4" /> },
+    { id: 'settings', label: 'Keselamatan & Akses', icon: <Settings className="w-4 h-4" /> },
     { id: 'logs', label: 'Log Audit', icon: <FileText className="w-4 h-4" /> }
   ];
 
@@ -104,7 +104,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 )}
               </div>
               <p className="text-xs font-semibold text-slate-500">
-                Welcome, Admin
+                {user?.name || user?.email || 'Verified Google Admin'}
               </p>
             </div>
           </button>

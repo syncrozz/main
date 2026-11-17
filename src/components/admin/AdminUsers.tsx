@@ -20,9 +20,11 @@ export const AdminUsers: React.FC = () => {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [isMutating, setIsMutating] = useState(false);
+
   const customAdmins = getAdminEmails();
 
-  const handleAddAdmin = (e: React.FormEvent) => {
+  const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
 
@@ -39,19 +41,28 @@ export const AdminUsers: React.FC = () => {
       return;
     }
 
-    const success = addAdminEmail(email);
-    if (success) {
+    setIsMutating(true);
+    const result = await addAdminEmail(email);
+    setIsMutating(false);
+
+    if (result.success) {
       setFeedback({ type: 'success', message: `Akaun ${email} berjaya ditambah sebagai ADMIN.` });
       setNewAdminEmail('');
     } else {
-      setFeedback({ type: 'error', message: 'Emel ini telah pun wujud dalam senarai pentadbir.' });
+      setFeedback({ type: 'error', message: result.error || 'Emel ini gagal ditambah atau telah wujud.' });
     }
   };
 
-  const handleRemoveAdmin = (email: string) => {
+  const handleRemoveAdmin = async (email: string) => {
     if (confirm(`Adakah anda pasti untuk membatalkan akses ADMIN bagi ${email}?`)) {
-      removeAdminEmail(email);
-      setFeedback({ type: 'success', message: `Akses ADMIN bagi ${email} telah dibatalkan.` });
+      setIsMutating(true);
+      const result = await removeAdminEmail(email);
+      setIsMutating(false);
+      if (result.success) {
+        setFeedback({ type: 'success', message: `Akses ADMIN bagi ${email} telah dibatalkan.` });
+      } else {
+        setFeedback({ type: 'error', message: result.error || 'Gagal membatalkan akses admin.' });
+      }
     }
   };
 
@@ -108,11 +119,11 @@ export const AdminUsers: React.FC = () => {
             />
             <button
               type="submit"
-              disabled={!newAdminEmail.trim()}
+              disabled={!newAdminEmail.trim() || isMutating}
               className="px-5 py-2.5 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <UserPlus className="w-4 h-4" />
-              <span>Lantik Admin</span>
+              <span>{isMutating ? 'Menyimpan...' : 'Lantik Admin'}</span>
             </button>
           </form>
 
@@ -202,7 +213,7 @@ export const AdminUsers: React.FC = () => {
                   <td className="py-3.5 px-4">
                     <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[11px]">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Firebase & PIN</span>
+                      <span>Google Auth (Verified)</span>
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600">

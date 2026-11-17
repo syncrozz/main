@@ -1,32 +1,39 @@
 import React from 'react';
-import { ShieldX, ArrowLeft, LogOut, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ShieldX, ArrowLeft, LogOut, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 
 interface AccessDeniedProps {
   onBackToHome: () => void;
-  onTryAnotherAccount: () => void;
+  onTryAnotherAccount?: () => void;
 }
 
 export const AccessDenied: React.FC<AccessDeniedProps> = ({
   onBackToHome,
-  onTryAnotherAccount
+  onTryAnotherAccount,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, loginWithGoogle } = useAuth();
 
-  const handleSwitchAccount = () => {
-    logout();
-    onTryAnotherAccount();
+  const handleSwitchAccount = async () => {
+    await logout();
+    if (onTryAnotherAccount) {
+      onTryAnotherAccount();
+    } else {
+      await loginWithGoogle();
+    }
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    onBackToHome();
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-      
       {/* Decorative background glow */}
       <div className="absolute top-1/4 -left-32 w-80 h-80 bg-red-100/60 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-amber-100/50 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/80 border border-slate-200 p-8 sm:p-10 text-center relative z-10">
-        
         {/* Red Shield Icon */}
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 border border-red-100 text-red-600 shadow-xs mb-5">
           <ShieldX className="w-8 h-8" />
@@ -34,12 +41,12 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
 
         {/* Title */}
         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
-          Akses Ditolak
+          Access Denied — Unauthorized Account
         </h2>
 
-        {/* Requisite Error Text */}
+        {/* Description */}
         <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
-          Sesi anda tidak mempunyai kebenaran untuk mengakses Papan Pemuka Pentadbir SYNCROZZ.
+          Akaun Google anda tidak mempunyai kebenaran untuk mengakses Papan Pemuka Pentadbir SYNCROZZ.
         </p>
 
         {/* Identity Verification Card */}
@@ -66,7 +73,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
             )}
             <div className="overflow-hidden">
               <div className="text-xs font-bold text-slate-900 truncate">
-                {user?.name || 'Pelawat'}
+                {user?.name || 'Pengguna Google'}
               </div>
               <div className="text-[11px] font-mono text-slate-500 truncate">
                 {user?.email || 'unauthorized'}
@@ -81,18 +88,30 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <button
             id="try-another-google-account-btn"
+            type="button"
             onClick={handleSwitchAccount}
             className="w-full py-3 px-4 rounded-xl bg-[#0056D2] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Masukkan PIN Pentadbir</span>
+            <span>Log Masuk Akaun Google Lain</span>
+          </button>
+
+          <button
+            id="access-denied-signout-btn"
+            type="button"
+            onClick={handleSignOut}
+            className="w-full py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-xs border border-red-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
           </button>
 
           <button
             id="access-denied-home-btn"
+            type="button"
             onClick={onBackToHome}
             className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -106,7 +125,6 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
           <AlertTriangle className="w-3 h-3 text-amber-500" />
           <span>Percubaan akses telah direkodkan dalam log keselamatan audit.</span>
         </div>
-
       </div>
     </div>
   );

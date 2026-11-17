@@ -3,42 +3,137 @@
   "entities": {
     "admins": {
       "title": "Admins",
-      "description": "Authorized admin users with roles and permissions",
+      "description": "Authorized secondary admin users granted ADMIN role by the Master Admin",
       "type": "object",
       "properties": {
-        "email": { "type": "string", "format": "email" },
-        "name": { "type": "string" },
-        "role": { "type": "string", "enum": ["MASTER_ADMIN", "ADMIN"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "addedBy": { "type": "string" }
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "name": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["ADMIN"] },
+        "createdAt": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "addedBy": { "type": "string", "maxLength": 200 }
       },
       "required": ["email", "role", "createdAt"]
     },
-    "auditLogs": {
-      "title": "Audit Logs",
-      "description": "System activity, security and admin audit logs",
+    "users": {
+      "title": "Users",
+      "description": "Authenticated user profiles synchronized via Google Auth",
       "type": "object",
       "properties": {
-        "eventType": { "type": "string" },
-        "userEmail": { "type": "string" },
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "photoUrl": { "type": "string", "maxLength": 512 },
+        "role": { "type": "string", "enum": ["MASTER_ADMIN", "ADMIN", "USER"] },
+        "createdAt": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "inquiries": {
+      "title": "Inquiries",
+      "description": "Contact and consultation inquiries submitted by website visitors",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 80 },
+        "name": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "organization": { "type": "string", "maxLength": 160 },
+        "platformInterest": { "type": "string", "maxLength": 120 },
+        "message": { "type": "string", "maxLength": 4000 },
+        "status": { "type": "string", "enum": ["new", "in_progress", "contacted", "resolved", "completed", "archived"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "updatedBy": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "name", "email", "message", "status", "read", "createdAt"]
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "description": "Immutable security and administrative audit trail",
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string", "maxLength": 80 },
+        "userEmail": { "type": "string", "maxLength": 200 },
         "status": { "type": "string", "enum": ["SUCCESS", "DENIED", "INFO", "WARNING"] },
-        "details": { "type": "string" },
+        "details": { "type": "string", "maxLength": 1000 },
         "timestamp": { "type": "number" },
-        "ip": { "type": "string" }
+        "ip": { "type": "string", "maxLength": 64 }
       },
       "required": ["eventType", "userEmail", "status", "timestamp"]
     },
     "platformOgImages": {
-      "title": "Platform OG Images",
-      "description": "Custom Open Graph preview images for platforms",
+      "title": "Platform OG Images & Showcase Config",
+      "description": "Public showcase Open Graph images and non-PII catalog configurations",
       "type": "object",
       "properties": {
-        "platformId": { "type": "string" },
+        "platformId": { "type": "string", "maxLength": 128 },
         "imageUrl": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "updatedBy": { "type": "string" }
-      },
-      "required": ["platformId", "imageUrl", "updatedAt"]
+        "updatedAt": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "updatedBy": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "customPlatforms": {
+      "title": "Custom Platforms",
+      "description": "Public platform catalog entries managed by admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "customPlatformUrls": {
+      "title": "Custom Platform URLs",
+      "description": "Public verified destination URLs per platform",
+      "type": "object",
+      "properties": {
+        "platformId": { "type": "string", "maxLength": 128 },
+        "url": { "type": "string", "maxLength": 512 }
+      }
+    },
+    "platformSettings": {
+      "title": "Platform Settings",
+      "description": "Public showcase display settings",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "maxLength": 128 }
+      }
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": "admins",
+      "description": "Secondary admin identities keyed by lowercase Google email"
+    },
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles keyed by Firebase Auth UID"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": "inquiries",
+      "description": "Visitor contact and consultation inquiries"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "auditLogs",
+      "description": "Immutable security audit log records"
+    },
+    "/platformOgImages/{imageId}": {
+      "schema": "platformOgImages",
+      "description": "Public showcase OG metadata and platform configurations"
+    },
+    "/customPlatforms/{platformId}": {
+      "schema": "customPlatforms",
+      "description": "Custom platform catalog records"
+    },
+    "/customPlatformUrls/{urlId}": {
+      "schema": "customPlatformUrls",
+      "description": "Verified platform URL overrides"
+    },
+    "/platformSettings/{settingId}": {
+      "schema": "platformSettings",
+      "description": "Public showcase configuration documents"
     }
   }
 }

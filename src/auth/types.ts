@@ -7,12 +7,19 @@ export interface AuthUser {
   picture?: string;
   role: UserRole;
   isEmailVerified: boolean;
-  provider: 'google' | 'pin';
+  provider: 'google';
   authTime: number;
   token?: string;
 }
 
-export type Permission = 
+export interface SecondaryAdminEntry {
+  email: string;
+  name?: string;
+  addedBy: string;
+  createdAt: string;
+}
+
+export type Permission =
   | 'VIEW_ADMIN_DASHBOARD'
   | 'MANAGE_PLATFORMS'
   | 'UPLOAD_OG_IMAGES'

@@ -11,7 +11,7 @@ export async function seedDatabaseIfEmpty() {
   }
   try {
     // Only ensure master admin record exists if completely missing
-    const masterAdminEmail = 'admin@syncrozz.com';
+    const masterAdminEmail = 'khaikerr@gmail.com';
     const existingAdmin = await db.select().from(users).where(eq(users.email, masterAdminEmail));
     if (existingAdmin.length === 0) {
       await db.insert(users).values({

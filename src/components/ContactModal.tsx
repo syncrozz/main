@@ -11,7 +11,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { submitInquiryApi } from '../services/apiService';
-import { saveInquiryToFirestore, logAuditEvent } from '../services/firestoreService';
+import { saveInquiryToFirestore } from '../services/firestoreService';
 import { getLocalInquiries, saveLocalInquiries } from '../utils/inquiryStorage';
 import { InquiryItem } from '../types';
 
@@ -78,15 +78,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     const currentList = getLocalInquiries();
     saveLocalInquiries([newInquiry, ...currentList]);
 
-    // 2. Sync to Firestore for real-time notification
+    // 2. Sync to Firestore for real-time admin notification
     try {
       await saveInquiryToFirestore(newInquiry);
-      await logAuditEvent({
-        eventType: 'NEW_INQUIRY',
-        userEmail: formData.email,
-        status: 'INFO',
-        details: `Pertanyaan baru dari ${formData.name} untuk ${formData.platformInterest}`
-      });
     } catch (err) {
       console.warn('Firestore inquiry sync notice:', err);
     }

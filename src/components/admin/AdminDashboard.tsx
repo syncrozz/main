@@ -60,7 +60,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (hash.includes('inquiries') || hash.includes('messages')) return 'inquiries';
       if (hash.includes('carousel')) return 'carousel';
       if (hash.includes('users') || hash.includes('roles')) return 'users';
-      if (hash.includes('settings') || hash.includes('pin')) return 'settings';
+      if (hash.includes('settings') || hash.includes('security')) return 'settings';
       if (hash.includes('logs') || hash.includes('audit')) return 'logs';
     } catch {}
     return 'overview';

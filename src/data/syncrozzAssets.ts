@@ -179,3 +179,16 @@ export const SYNCROZZ_OGI_OFFICIAL = {
 } as const;
 
 export const SYNCROZZ_OGI_PRIMARY = SYNCROZZ_OGI_OFFICIAL.rawUrl;
+
+/**
+ * Verified HTTP 200 per-platform Official Open Graph JPG assets
+ * from https://github.com/syncrozz/syncrozz-assets/tree/main/OGI
+ */
+export const OFFICIAL_PLATFORM_OGI_MAP: Record<string, string> = {
+  'kpm-match': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.Kpm.MATCH.jpg',
+  'syncrozz-qr': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.QR.jpg',
+  'rc-zone': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.RC.Zonev2.jpg',
+  'syncrozz-link': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.Syncrozz.LINK.jpg',
+  'urusteam': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/OGI/OGI.UrusTEAM.v2.jpg',
+};
+

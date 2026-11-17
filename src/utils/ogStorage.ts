@@ -1,5 +1,6 @@
-import { PlatformItem } from '../types';
-import { SYNCROZZ_OGI_OFFICIAL, SYNCROZZ_PRIMARY_LOGO } from '../data/syncrozzAssets';
+import { PlatformItem, DiscoveredPlatformMetadata } from '../types';
+import { SYNCROZZ_OGI_OFFICIAL, SYNCROZZ_PRIMARY_LOGO, OFFICIAL_PLATFORM_OGI_MAP } from '../data/syncrozzAssets';
+import { isValidExternalHttpUrl } from './platformUrlUtils';
 import { 
   saveCustomPlatformUrlToFirestore, 
   removeCustomPlatformUrlFromFirestore,
@@ -255,5 +256,38 @@ export function generateDefaultOgImage(item?: Partial<PlatformItem> | null): str
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Resolves the authoritative Open Graph visual for a platform:
+ * 1. Admin custom uploaded OGI (customOgImages[id]) or explicit platform.ogImage
+ * 2. Discovered external OGI (unless target is just mirroring root portal SPA fallback)
+ * 3. Verified Official SYNCROZZ OGI JPG from syncrozz-assets/OGI
+ * 4. Generated 1200x630 SVG fallback
+ */
+export function resolvePlatformOgImage(
+  item: PlatformItem,
+  customOgImages: Record<string, string> = {},
+  discovered?: DiscoveredPlatformMetadata | null
+): { src: string; isOfficialJpg: boolean } {
+  const custom = customOgImages[item.id];
+  if (custom && (custom.startsWith('data:image/') || isValidExternalHttpUrl(custom))) {
+    return { src: custom, isOfficialJpg: true };
+  }
+
+  if (item.ogImage && (item.ogImage.startsWith('data:image/') || isValidExternalHttpUrl(item.ogImage))) {
+    return { src: item.ogImage, isOfficialJpg: true };
+  }
+
+  if (discovered?.ogImage && !discovered.isRootPortalFallback && isValidExternalHttpUrl(discovered.ogImage)) {
+    return { src: discovered.ogImage, isOfficialJpg: true };
+  }
+
+  const officialAsset = OFFICIAL_PLATFORM_OGI_MAP[item.id];
+  if (officialAsset) {
+    return { src: officialAsset, isOfficialJpg: true };
+  }
+
+  return { src: generateDefaultOgImage(item), isOfficialJpg: false };
 }
 

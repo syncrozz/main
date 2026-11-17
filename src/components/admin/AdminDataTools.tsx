@@ -136,7 +136,7 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
       results.firestoreLatencyMs = Math.round(endFs - startFs);
       if (snap.exists()) {
         results.firestoreStatus = 'ok';
-        results.firestoreDetails = 'Firestore bersambung sepenuhnya. Baca dan tulis dokumen berjaya!';
+        results.firestoreDetails = `Firestore (${firebaseConfig.projectId} / ${firebaseConfig.firestoreDatabaseId || '(default)'}) bersambung sepenuhnya. Baca dan tulis dokumen berjaya!`;
       } else {
         results.firestoreStatus = 'error';
         results.firestoreDetails = 'Dokumen ujian tidak ditemui selepas penulisan.';
@@ -146,13 +146,13 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
       const errCode = e?.code || '';
       if (errCode === 'not-found' || errMsg.includes('NOT_FOUND') || errMsg.includes('does not exist') || errMsg.includes('404')) {
         results.firestoreStatus = 'not_found';
-        results.firestoreDetails = `Pangkalan data Firestore (${firebaseConfig.firestoreDatabaseId || 'default'}) BELUM wujud di Google Cloud. Oleh itu, peranti ini berfungsi dalam mod storan setempat (localStorage) sahaja.`;
+        results.firestoreDetails = `Pangkalan data Firestore (${firebaseConfig.projectId} / ${firebaseConfig.firestoreDatabaseId || '(default)'}) BELUM wujud di Google Cloud. Oleh itu, peranti ini berfungsi dalam mod storan setempat (localStorage) sahaja.`;
       } else if (errCode === 'permission-denied' || errMsg.includes('permission-denied')) {
         results.firestoreStatus = 'error';
-        results.firestoreDetails = `Kebenaran Firestore disekat (Permission Denied). Sila semak firestore.rules.`;
+        results.firestoreDetails = `Kebenaran Firestore (${firebaseConfig.projectId}) disekat (Permission Denied). Sila semak firestore.rules.`;
       } else {
         results.firestoreStatus = 'error';
-        results.firestoreDetails = `Ralat sambungan Firestore: ${errMsg}`;
+        results.firestoreDetails = `Ralat sambungan Firestore (${firebaseConfig.projectId}): ${errMsg}`;
       }
     }
 
@@ -627,7 +627,7 @@ export const AdminDataTools: React.FC<AdminDataToolsProps> = ({
                     ) : (
                       <AlertCircle className="w-4 h-4 text-red-600" />
                     )}
-                    <span>Google Cloud Firestore</span>
+                    <span>Google Cloud Firestore ({firebaseConfig.projectId})</span>
                     {syncTestResults.firestoreLatencyMs !== undefined && (
                       <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-white border ml-auto">
                         {syncTestResults.firestoreLatencyMs}ms

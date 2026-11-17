@@ -1,7 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'node:crypto';
 import { PlatformItem } from '../types.ts';
 import { CarouselSlide } from '../utils/carouselStorage.ts';
+
+export interface SecondaryAdminRecord {
+  email: string;
+  name?: string;
+  addedBy: string;
+  createdAt: string;
+}
 
 export interface CloudStoreData {
   version: number;
@@ -12,9 +20,23 @@ export interface CloudStoreData {
   deletedDefaultIds: string[];
   ogImages: Record<string, string>;
   inquiries: any[];
+  secondaryAdmins: SecondaryAdminRecord[];
+  revokedTokenHashes: Record<string, number>;
+  revokedUsersAfter: Record<string, number>;
+}
+
+export interface PublicCloudState {
+  version: number;
+  lastUpdated: number;
+  platforms: PlatformItem[];
+  customUrls: Record<string, string>;
+  carouselSlides: CarouselSlide[];
+  deletedDefaultIds: string[];
+  ogImages: Record<string, string>;
 }
 
 const STORE_FILE_PATH = path.join(process.cwd(), '.syncrozz_store.json');
+const MASTER_ADMIN_EMAIL = 'khaikerr@gmail.com';
 
 // In-memory runtime cache
 let memoryStore: CloudStoreData = {
@@ -25,7 +47,10 @@ let memoryStore: CloudStoreData = {
   carouselSlides: [],
   deletedDefaultIds: [],
   ogImages: {},
-  inquiries: []
+  inquiries: [],
+  secondaryAdmins: [],
+  revokedTokenHashes: {},
+  revokedUsersAfter: {},
 };
 
 let isInitialized = false;
@@ -33,8 +58,25 @@ let isInitialized = false;
 function saveStoreToDisk() {
   try {
     fs.writeFileSync(STORE_FILE_PATH, JSON.stringify(memoryStore, null, 2), 'utf-8');
-  } catch (error) {
+  } catch {
     // Disk write might fail in read-only sandbox, ignore safely
+  }
+}
+
+function normalizeEmail(email: string): string {
+  return String(email || '').trim().toLowerCase();
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function pruneExpiredRevocations() {
+  const now = Date.now();
+  for (const [hash, expMs] of Object.entries(memoryStore.revokedTokenHashes)) {
+    if (expMs <= now) {
+      delete memoryStore.revokedTokenHashes[hash];
+    }
   }
 }
 
@@ -48,6 +90,30 @@ export function loadCloudStore(): CloudStoreData {
       const raw = fs.readFileSync(STORE_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
+        const rawAdmins = Array.isArray(parsed.secondaryAdmins) ? parsed.secondaryAdmins : [];
+        const cleanAdmins: SecondaryAdminRecord[] = rawAdmins
+          .map((item: any) => {
+            if (typeof item === 'string') {
+              return {
+                email: normalizeEmail(item),
+                addedBy: MASTER_ADMIN_EMAIL,
+                createdAt: new Date().toISOString(),
+              };
+            }
+            if (item && typeof item.email === 'string') {
+              return {
+                email: normalizeEmail(item.email),
+                name: typeof item.name === 'string' ? item.name : undefined,
+                addedBy: typeof item.addedBy === 'string' ? normalizeEmail(item.addedBy) : MASTER_ADMIN_EMAIL,
+                createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+              };
+            }
+            return null;
+          })
+          .filter((a: SecondaryAdminRecord | null): a is SecondaryAdminRecord =>
+            Boolean(a && a.email && a.email !== MASTER_ADMIN_EMAIL)
+          );
+
         memoryStore = {
           version: parsed.version || 1,
           lastUpdated: parsed.lastUpdated || Date.now(),
@@ -56,13 +122,17 @@ export function loadCloudStore(): CloudStoreData {
           carouselSlides: Array.isArray(parsed.carouselSlides) ? parsed.carouselSlides : [],
           deletedDefaultIds: Array.isArray(parsed.deletedDefaultIds) ? parsed.deletedDefaultIds : [],
           ogImages: parsed.ogImages || {},
-          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : []
+          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : [],
+          secondaryAdmins: cleanAdmins,
+          revokedTokenHashes: parsed.revokedTokenHashes && typeof parsed.revokedTokenHashes === 'object' ? parsed.revokedTokenHashes : {},
+          revokedUsersAfter: parsed.revokedUsersAfter && typeof parsed.revokedUsersAfter === 'object' ? parsed.revokedUsersAfter : {},
         };
 
         if (memoryStore.deletedDefaultIds.length > 0) {
           const delSet = new Set(memoryStore.deletedDefaultIds);
           memoryStore.platforms = memoryStore.platforms.filter((p) => !delSet.has(p.id));
         }
+        pruneExpiredRevocations();
       }
     }
   } catch (error) {
@@ -73,9 +143,107 @@ export function loadCloudStore(): CloudStoreData {
   return memoryStore;
 }
 
+export function getPublicCloudState(): PublicCloudState {
+  loadCloudStore();
+  return {
+    version: memoryStore.version,
+    lastUpdated: memoryStore.lastUpdated,
+    platforms: memoryStore.platforms,
+    customUrls: memoryStore.customUrls,
+    carouselSlides: memoryStore.carouselSlides,
+    deletedDefaultIds: memoryStore.deletedDefaultIds,
+    ogImages: memoryStore.ogImages,
+  };
+}
+
 export function getFullCloudState(): CloudStoreData {
   loadCloudStore();
   return { ...memoryStore };
+}
+
+export function getStoreSecondaryAdmins(): SecondaryAdminRecord[] {
+  loadCloudStore();
+  return [...memoryStore.secondaryAdmins];
+}
+
+export function isStoreSecondaryAdmin(email: string): boolean {
+  loadCloudStore();
+  const clean = normalizeEmail(email);
+  if (!clean || clean === MASTER_ADMIN_EMAIL) return false;
+  return memoryStore.secondaryAdmins.some((a) => normalizeEmail(a.email) === clean);
+}
+
+export function addStoreSecondaryAdmin(
+  email: string,
+  addedBy: string,
+  name?: string
+): { added: boolean; admins: SecondaryAdminRecord[] } {
+  loadCloudStore();
+  const clean = normalizeEmail(email);
+  if (!clean || clean === MASTER_ADMIN_EMAIL) {
+    return { added: false, admins: [...memoryStore.secondaryAdmins] };
+  }
+  const exists = memoryStore.secondaryAdmins.some((a) => normalizeEmail(a.email) === clean);
+  if (exists) {
+    return { added: false, admins: [...memoryStore.secondaryAdmins] };
+  }
+  memoryStore.secondaryAdmins.push({
+    email: clean,
+    name: name?.trim() || undefined,
+    addedBy: normalizeEmail(addedBy) || MASTER_ADMIN_EMAIL,
+    createdAt: new Date().toISOString(),
+  });
+  memoryStore.version += 1;
+  memoryStore.lastUpdated = Date.now();
+  saveStoreToDisk();
+  return { added: true, admins: [...memoryStore.secondaryAdmins] };
+}
+
+export function removeStoreSecondaryAdmin(email: string): { removed: boolean; admins: SecondaryAdminRecord[] } {
+  loadCloudStore();
+  const clean = normalizeEmail(email);
+  if (!clean || clean === MASTER_ADMIN_EMAIL) {
+    return { removed: false, admins: [...memoryStore.secondaryAdmins] };
+  }
+  const before = memoryStore.secondaryAdmins.length;
+  memoryStore.secondaryAdmins = memoryStore.secondaryAdmins.filter((a) => normalizeEmail(a.email) !== clean);
+  const removed = memoryStore.secondaryAdmins.length < before;
+  if (removed) {
+    // Invalidate all currently issued tokens for the removed admin
+    memoryStore.revokedUsersAfter[clean] = Math.floor(Date.now() / 1000);
+    memoryStore.version += 1;
+    memoryStore.lastUpdated = Date.now();
+    saveStoreToDisk();
+  }
+  return { removed, admins: [...memoryStore.secondaryAdmins] };
+}
+
+export function revokeBearerToken(token: string, email: string, expSeconds?: number): void {
+  loadCloudStore();
+  pruneExpiredRevocations();
+  if (token) {
+    const expMs = expSeconds ? expSeconds * 1000 : Date.now() + 2 * 60 * 60 * 1000;
+    memoryStore.revokedTokenHashes[hashToken(token)] = expMs;
+  }
+  if (email) {
+    const clean = normalizeEmail(email);
+    memoryStore.revokedUsersAfter[clean] = Math.floor(Date.now() / 1000);
+  }
+  saveStoreToDisk();
+}
+
+export function isBearerTokenRevoked(token: string, email: string, issuedAtSec?: number): boolean {
+  loadCloudStore();
+  pruneExpiredRevocations();
+  if (token && memoryStore.revokedTokenHashes[hashToken(token)]) {
+    return true;
+  }
+  const clean = normalizeEmail(email);
+  const revokedAt = memoryStore.revokedUsersAfter[clean];
+  if (typeof revokedAt === 'number' && typeof issuedAtSec === 'number' && issuedAtSec <= revokedAt) {
+    return true;
+  }
+  return false;
 }
 
 export function getStorePlatforms(): PlatformItem[] {

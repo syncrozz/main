@@ -1,5 +1,22 @@
 export type PlatformCategory = 'All' | 'Education' | 'Campus' | 'Productivity' | 'Community' | 'Innovation';
 
+export interface DiscoveredPlatformMetadata {
+  sourceUrl: string;
+  finalUrl: string;
+  manifestUrl?: string;
+  name?: string;
+  shortName?: string;
+  description?: string;
+  startUrl?: string;
+  scope?: string;
+  iconUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  isRootPortalFallback?: boolean;
+  discoveredAt: number;
+}
+
 export interface PlatformItem {
   id: string;
   name: string;
@@ -14,6 +31,8 @@ export interface PlatformItem {
   features: string[];
   audience: string[];
   url?: string;
+  pwaManifestUrl?: string;
+  discoveredMetadata?: DiscoveredPlatformMetadata;
   isPopular?: boolean;
   status: 'Active' | 'Beta' | 'New';
   isCustom?: boolean;

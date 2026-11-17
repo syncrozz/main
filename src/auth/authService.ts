@@ -1,96 +1,22 @@
 import { AuthUser, UserRole, Permission, AuditLogEntry } from './types';
-import { ADMIN_PIN, MASTER_ADMIN_EMAILS, ROLE_PERMISSIONS } from './authConfig';
+import { ROLE_PERMISSIONS } from './authConfig';
 import { logAuditEventToFirestore } from '../services/firestoreService';
+import { postAuditLogApi } from '../services/apiService';
 
-const SESSION_KEY = 'syncrozz_auth_session';
-const ADMIN_REGISTRY_KEY = 'syncrozz_admin_registry';
 const AUDIT_LOGS_KEY = 'syncrozz_audit_logs';
+const LEGACY_STORAGE_KEYS = [
+  'syncrozz_auth_session',
+  'syncrozz_admin_registry',
+  'syncrozz_admin_token',
+  'syncrozz_admin_email',
+];
 
-/**
- * Validate Admin Access PIN Code
- */
-export function validateAdminPin(pin: string | number): boolean {
-  if (pin === null || pin === undefined) return false;
-  const cleanPin = String(pin)
-    .trim()
-    .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-    .replace(/\D/g, '');
-  return cleanPin === ADMIN_PIN || cleanPin === '5313';
-}
-
-/**
- * Create Admin Session from PIN
- */
-export function createAdminSessionFromPin(): AuthUser {
-  return {
-    id: 'usr_admin_master',
-    email: 'admin@syncrozz.com',
-    name: 'SYNCROZZ Admin',
-    picture: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/MAIN/android-chrome-192x192.png',
-    role: 'MASTER_ADMIN',
-    isEmailVerified: true,
-    provider: 'pin',
-    authTime: Date.now()
-  };
-}
-
-/**
- * Get dynamic admin list from storage
- */
-export function getCustomAdminList(): string[] {
+export function cleanupLegacyAuthStorage(): void {
   try {
-    const raw = localStorage.getItem(ADMIN_REGISTRY_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Save custom admin list (Master Admin capability only)
- */
-export function saveCustomAdminList(admins: string[]): void {
-  try {
-    localStorage.setItem(ADMIN_REGISTRY_KEY, JSON.stringify(admins));
-  } catch (err) {
-    console.error('Failed to save admin registry', err);
-  }
-}
-
-/**
- * CENTRAL AUTHORIZATION ENGINE
- * Determines the role of any verified Google user.
- * Separates authentication (who the user is) from authorization (what they can do).
- */
-export function determineUserRole(email: string, isEmailVerified: boolean = true): UserRole {
-  if (!email || !isEmailVerified) {
-    return 'USER';
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-
-  // 1. Check Master Admin Identity
-  const isMaster = MASTER_ADMIN_EMAILS.some(
-    (masterEmail) => masterEmail.toLowerCase() === normalizedEmail
-  );
-
-  if (isMaster) {
-    return 'MASTER_ADMIN';
-  }
-
-  // 2. Check Secondary Admin Registry
-  const customAdmins = getCustomAdminList();
-  const isSecondaryAdmin = customAdmins.some(
-    (adminEmail) => adminEmail.toLowerCase() === normalizedEmail
-  );
-
-  if (isSecondaryAdmin) {
-    return 'ADMIN';
-  }
-
-  // 3. Default to standard USER (unauthorized for admin panel)
-  return 'USER';
+    for (const key of LEGACY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+  } catch {}
 }
 
 /**
@@ -106,7 +32,7 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
  * Check if user is allowed to access Admin Panel
  */
 export function canAccessAdmin(user: AuthUser | null): boolean {
-  if (!user) return false;
+  if (!user || !user.isEmailVerified) return false;
   return user.role === 'MASTER_ADMIN' || user.role === 'ADMIN';
 }
 
@@ -114,34 +40,19 @@ export function canAccessAdmin(user: AuthUser | null): boolean {
  * Check if user is Master Admin
  */
 export function isMasterAdmin(user: AuthUser | null): boolean {
-  if (!user) return false;
+  if (!user || !user.isEmailVerified) return false;
   return user.role === 'MASTER_ADMIN';
 }
 
 /**
- * Parse Google ID Token (JWT) on client safely
+ * Client-side audit log recorder (mirrors authenticated admin actions cleanly)
  */
-export function decodeGoogleJwt(token: string): any {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    console.error('Failed to decode Google JWT', e);
-    return null;
-  }
-}
-
-/**
- * Audit Logging Service
- */
-export function logAuditEvent(action: string, email: string, status: 'SUCCESS' | 'DENIED' | 'INFO', details?: string): void {
+export function logAuditEvent(
+  action: string,
+  email: string,
+  status: 'SUCCESS' | 'DENIED' | 'INFO',
+  details?: string
+): void {
   try {
     const entry: AuditLogEntry = {
       id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -149,24 +60,16 @@ export function logAuditEvent(action: string, email: string, status: 'SUCCESS' |
       email,
       action,
       status,
-      details
+      details,
     };
 
     const existingLogs = getAuditLogs();
-    const updatedLogs = [entry, ...existingLogs].slice(0, 100); // keep last 100 logs
+    const updatedLogs = [entry, ...existingLogs].slice(0, 100);
     localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(updatedLogs));
 
-    // Sync with Firestore in real-time
+    // Only authenticated Firebase users write to protected audit endpoints
     logAuditEventToFirestore(action, email, status, details || '').catch(() => {});
-
-    // Also send to backend if available
-    fetch('/api/admin/logs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
-    }).catch(() => {
-      // Non-blocking
-    });
+    postAuditLogApi({ action, status, details }).catch(() => {});
   } catch (err) {
     console.error('Failed to log audit event', err);
   }
@@ -179,47 +82,5 @@ export function getAuditLogs(): AuditLogEntry[] {
     return JSON.parse(raw);
   } catch {
     return [];
-  }
-}
-
-/**
- * Save user session to localStorage and server
- */
-export function saveSession(user: AuthUser): void {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  } catch (e) {
-    console.error('Failed to persist session', e);
-  }
-}
-
-/**
- * Retrieve active session
- */
-export function getSavedSession(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const user: AuthUser = JSON.parse(raw);
-    
-    // Re-verify authorization in case roles changed
-    const freshRole = determineUserRole(user.email, user.isEmailVerified);
-    return {
-      ...user,
-      role: freshRole
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Clear session
- */
-export function clearSession(): void {
-  try {
-    localStorage.removeItem(SESSION_KEY);
-  } catch (e) {
-    console.error('Failed to clear session', e);
   }
 }

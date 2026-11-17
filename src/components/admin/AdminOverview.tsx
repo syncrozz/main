@@ -72,14 +72,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
           </div>
 
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-            Welcome, Admin
+            Selamat Datang, {user?.name || 'Admin'}
           </h1>
 
           <p className="text-xs text-slate-300 leading-relaxed">
             Anda log masuk sebagai <strong className="text-white font-mono">{user?.email}</strong>. 
             {isMasterAdmin 
-              ? ' Memegang kebenaran Master Admin tertinggi bagi keseluruhan ekosistem SYNCROZZ.' 
-              : ' Mempunyai hak akses pentadbir untuk mengurus visual dan kandungan platform.'}
+              ? ' Memegang kebenaran Master Admin eksklusif bagi keseluruhan ekosistem SYNCROZZ.' 
+              : ' Mempunyai hak akses pentadbir sekunder untuk mengurus visual dan kandungan platform.'}
           </p>
 
           <div className="pt-1 flex flex-wrap gap-2.5">
