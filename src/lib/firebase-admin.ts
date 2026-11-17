@@ -1,6 +1,6 @@
-import { initializeApp, getApps, cert, ServiceAccount } from 'firebase-admin/app';
-import { getAuth, Auth, DecodedIdToken } from 'firebase-admin/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { initializeApp, getApps, cert, type ServiceAccount } from 'firebase-admin/app';
+import { getAuth, type Auth, type DecodedIdToken } from 'firebase-admin/auth';
+import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
 
 let authClient: Auth | null = null;
 

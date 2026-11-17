@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'node:crypto';
-import { PlatformItem } from '../types.ts';
-import { CarouselSlide } from '../utils/carouselStorage.ts';
+import type { PlatformItem } from '../types.ts';
+import type { CarouselSlide } from '../utils/carouselStorage.ts';
 
 export interface SecondaryAdminRecord {
   email: string;

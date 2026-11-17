@@ -1,7 +1,7 @@
 import { db, isSqlConfigured } from './index.ts';
 import { users, platforms, platformOgImages, auditLogs, contactInquiries } from './schema.ts';
 import { eq, desc } from 'drizzle-orm';
-import { PlatformItem } from '../types.ts';
+import type { PlatformItem } from '../types.ts';
 import { PLATFORMS_DATA } from '../data/platforms.ts';
 
 // In-Memory fallback caches

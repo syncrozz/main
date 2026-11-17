@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { DecodedIdToken } from 'firebase-admin/auth';
+import type { Request, Response, NextFunction } from 'express';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 import { verifyGoogleFirebaseIdToken, MASTER_ADMIN_EMAIL } from '../lib/firebase-admin.ts';
 import { isBearerTokenRevoked, isStoreSecondaryAdmin } from '../server/cloudStore.ts';
 import { createAuditLog } from '../db/repositories.ts';

@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import {
   getOrCreateUser,
   getAllUsers,
@@ -49,7 +48,7 @@ import {
 } from './src/server/platformDiscovery.ts';
 import { MASTER_ADMIN_EMAIL } from './src/lib/firebase-admin.ts';
 import {
-  AuthRequest,
+  type AuthRequest,
   requireAuth,
   requireAdmin,
   requireMasterAdmin,
@@ -804,6 +803,7 @@ app.get('/api/health', (_req, res) => {
 // ----------------------------------------------------
 async function startServer() {
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: {
         middlewareMode: true,

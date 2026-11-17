@@ -1,4 +1,4 @@
-import { PlatformItem, BenefitItem, EcosystemStep, CategoryDetail } from '../types';
+import type { PlatformItem, BenefitItem, EcosystemStep, CategoryDetail } from '../types.ts';
 
 export const PLATFORMS_DATA: PlatformItem[] = [
   {

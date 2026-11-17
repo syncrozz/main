@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { DiscoveredPlatformMetadata } from '../types';
+import type { DiscoveredPlatformMetadata } from '../types.ts';
 
 const REQUEST_TIMEOUT_MS = 4000;
 const MAX_REDIRECTS = 3;
