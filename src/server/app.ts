@@ -220,6 +220,13 @@ async function handleGoogleSessionVerification(req: express.Request, res: expres
   }
 }
 
+app.all('/api/admin/session', (req, res, next) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Gunakan kaedah POST.' });
+  }
+  return next();
+});
+
 app.post('/api/admin/session', handleGoogleSessionVerification);
 app.post('/api/auth/google', handleGoogleSessionVerification);
 
